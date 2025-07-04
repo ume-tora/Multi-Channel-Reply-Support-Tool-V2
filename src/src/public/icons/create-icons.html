@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Generator</title>
+</head>
+<body>
+    <h1>Chrome Extension Icons Generator</h1>
+    
+    <!-- 16x16 Icon Canvas -->
+    <div>
+        <h3>16x16 Icon</h3>
+        <canvas id="icon16" width="16" height="16" style="border: 1px solid #ccc; image-rendering: pixelated; width: 64px; height: 64px;"></canvas>
+        <br>
+        <button onclick="downloadIcon('icon16', '16')">Download icon16.png</button>
+    </div>
+    
+    <!-- 48x48 Icon Canvas -->
+    <div>
+        <h3>48x48 Icon</h3>
+        <canvas id="icon48" width="48" height="48" style="border: 1px solid #ccc; width: 96px; height: 96px;"></canvas>
+        <br>
+        <button onclick="downloadIcon('icon48', '48')">Download icon48.png</button>
+    </div>
+    
+    <!-- 128x128 Icon Canvas -->
+    <div>
+        <h3>128x128 Icon</h3>
+        <canvas id="icon128" width="128" height="128" style="border: 1px solid #ccc; width: 128px; height: 128px;"></canvas>
+        <br>
+        <button onclick="downloadIcon('icon128', '128')">Download icon128.png</button>
+    </div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const scale = size / 128; // 128をベースサイズとする
+            
+            // 背景をクリア
+            ctx.clearRect(0, 0, size, size);
+            
+            // 背景円
+            ctx.fillStyle = '#3B82F6';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2 * 0.9, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // ロボットの頭部（白い長方形）
+            ctx.fillStyle = 'white';
+            const headX = size * 0.34;
+            const headY = size * 0.28;
+            const headWidth = size * 0.32;
+            const headHeight = size * 0.25;
+            ctx.fillRect(headX, headY, headWidth, headHeight);
+            
+            // 目（青い円）
+            ctx.fillStyle = '#3B82F6';
+            const eyeRadius = size * 0.03;
+            const leftEyeX = size * 0.41;
+            const rightEyeX = size * 0.59;
+            const eyeY = size * 0.375;
+            
+            ctx.beginPath();
+            ctx.arc(leftEyeX, eyeY, eyeRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(rightEyeX, eyeY, eyeRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 口（青い長方形）
+            ctx.fillRect(size * 0.45, size * 0.44, size * 0.1, size * 0.03);
+            
+            // 体（白い長方形）
+            ctx.fillStyle = 'white';
+            const bodyX = size * 0.375;
+            const bodyY = size * 0.56;
+            const bodyWidth = size * 0.25;
+            const bodyHeight = size * 0.22;
+            ctx.fillRect(bodyX, bodyY, bodyWidth, bodyHeight);
+            
+            // アンテナ（白い線と円）
+            if (size >= 48) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = size * 0.02;
+                ctx.beginPath();
+                ctx.moveTo(size/2, size * 0.2);
+                ctx.lineTo(size/2, size * 0.28);
+                ctx.stroke();
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(size/2, size * 0.18, size * 0.025, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // 腕（白い長方形）小さいアイコンでは省略
+            if (size >= 48) {
+                ctx.fillStyle = 'white';
+                // 左腕
+                ctx.fillRect(size * 0.28, size * 0.59, size * 0.06, size * 0.125);
+                // 右腕
+                ctx.fillRect(size * 0.66, size * 0.59, size * 0.06, size * 0.125);
+            }
+        }
+        
+        function downloadIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // ページ読み込み時にアイコンを描画
+        window.onload = function() {
+            drawIcon(document.getElementById('icon16'), 16);
+            drawIcon(document.getElementById('icon48'), 48);
+            drawIcon(document.getElementById('icon128'), 128);
+        };
+    </script>
+</body>
+</html>
