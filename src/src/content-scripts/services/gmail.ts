@@ -16,6 +16,15 @@ export class GmailStrategy implements ServiceStrategy {
       const currentView = this.detectGmailView();
       console.log(`Gmail: Detected view: ${currentView}`);
 
+      // ポップアップ表示の場合の特別な処理
+      if (this.isPopupView()) {
+        console.log('Gmail: Detected popup compose view');
+        const popupToolbar = this.findPopupToolbar();
+        if (popupToolbar) {
+          return popupToolbar;
+        }
+      }
+
       // 1. 返信/転送ボタンがあるツールバーを探す（最新のGmail UI）
       const toolbarSelectors = [
         // 新しいGmail UI - 返信ボタン
@@ -262,6 +271,15 @@ export class GmailStrategy implements ServiceStrategy {
     const messages: Message[] = [];
 
     try {
+      // ポップアップ表示の場合の特別処理
+      if (this.isPopupView()) {
+        console.log('Gmail: Extracting messages from popup view');
+        const popupMessages = this.extractPopupMessages();
+        if (popupMessages.length > 0) {
+          return popupMessages;
+        }
+      }
+
       // Gmailのメッセージコンテナを検索
       const messageSelectors = [
         'div[data-message-id]', // 個別メッセージ
@@ -297,6 +315,111 @@ export class GmailStrategy implements ServiceStrategy {
       }
     } catch (error) {
       console.error('Error extracting Gmail messages:', error);
+    }
+
+    return messages;
+  }
+
+  /**
+   * ポップアップ表示からメッセージを抽出
+   */
+  private extractPopupMessages(): Message[] {
+    const messages: Message[] = [];
+
+    try {
+      // ポップアップ内の会話履歴を検索
+      const popupSelectors = [
+        'div[role="dialog"] div[data-message-id]',
+        'div[aria-modal="true"] div[data-message-id]',
+        'div.nH.aHU div[data-message-id]',
+        'div[role="dialog"] .ii.gt',
+        'div[aria-modal="true"] .ii.gt',
+        'div.nH.aHU .ii.gt',
+      ];
+
+      for (const selector of popupSelectors) {
+        const messageElements = document.querySelectorAll(selector);
+        if (messageElements.length > 0) {
+          console.log(`Gmail: Found ${messageElements.length} popup messages with selector: ${selector}`);
+          
+          messageElements.forEach((messageEl) => {
+            const message = this.extractSingleMessage(messageEl);
+            if (message) {
+              messages.push(message);
+            }
+          });
+          
+          if (messages.length > 0) {
+            break;
+          }
+        }
+      }
+
+      // ポップアップ表示では、元のメッセージがポップアップ外にある場合がある
+      if (messages.length === 0) {
+        console.log('Gmail: Searching for messages outside popup');
+        const externalMessages = this.extractExternalMessages();
+        messages.push(...externalMessages);
+      }
+
+    } catch (error) {
+      console.error('Error extracting popup messages:', error);
+    }
+
+    return messages;
+  }
+
+  /**
+   * ポップアップ外の元メッセージを抽出
+   */
+  private extractExternalMessages(): Message[] {
+    const messages: Message[] = [];
+
+    try {
+      // メインページの会話履歴を検索（ポップアップが開いていても見える部分）
+      const mainSelectors = [
+        'div[data-message-id]:not([role="dialog"] div[data-message-id])',
+        '.ii.gt:not([role="dialog"] .ii.gt)',
+        '.adn.ads .gs:not([role="dialog"] .adn.ads .gs)',
+      ];
+
+      for (const selector of mainSelectors) {
+        const messageElements = document.querySelectorAll(selector);
+        if (messageElements.length > 0) {
+          console.log(`Gmail: Found ${messageElements.length} external messages with selector: ${selector}`);
+          
+          messageElements.forEach((messageEl) => {
+            const message = this.extractSingleMessage(messageEl);
+            if (message) {
+              messages.push(message);
+            }
+          });
+          
+          if (messages.length > 0) {
+            break;
+          }
+        }
+      }
+
+      // 最後の手段：ページ全体から会話の文脈を抽出
+      if (messages.length === 0) {
+        const subjectElement = document.querySelector('[data-thread-id] span[id^="thread"]') ||
+                              document.querySelector('h2[data-thread-id]') ||
+                              document.querySelector('.hP'); // 件名
+
+        if (subjectElement) {
+          const subject = subjectElement.textContent?.trim() || '';
+          if (subject) {
+            messages.push({
+              author: 'Subject',
+              text: subject,
+            });
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error extracting external messages:', error);
     }
 
     return messages;
@@ -366,19 +489,27 @@ export class GmailStrategy implements ServiceStrategy {
 
   insertReply(text: string): void {
     try {
-      // 返信入力欄を探す
-      const inputSelectors = [
-        'div[aria-label*="メッセージ本文"]',
-        'div[aria-label*="Message body"]',
-        'div[contenteditable="true"]',
-        'div[role="textbox"]',
-      ];
-
       let inputElement: HTMLElement | null = null;
 
-      for (const selector of inputSelectors) {
-        inputElement = document.querySelector(selector);
-        if (inputElement) break;
+      // ポップアップ表示の場合の特別処理
+      if (this.isPopupView()) {
+        console.log('Gmail: Inserting reply in popup view');
+        inputElement = this.findPopupInputElement();
+      }
+
+      // 通常の返信入力欄を探す
+      if (!inputElement) {
+        const inputSelectors = [
+          'div[aria-label*="メッセージ本文"]',
+          'div[aria-label*="Message body"]',
+          'div[contenteditable="true"]',
+          'div[role="textbox"]',
+        ];
+
+        for (const selector of inputSelectors) {
+          inputElement = document.querySelector(selector);
+          if (inputElement) break;
+        }
       }
 
       if (inputElement) {
@@ -404,8 +535,57 @@ export class GmailStrategy implements ServiceStrategy {
     }
   }
 
+  /**
+   * ポップアップ表示での入力要素を検索
+   */
+  private findPopupInputElement(): HTMLElement | null {
+    const popupInputSelectors = [
+      'div[role="dialog"] div[aria-label*="メッセージ本文"]',
+      'div[role="dialog"] div[aria-label*="Message body"]',
+      'div[role="dialog"] div[contenteditable="true"]',
+      'div[role="dialog"] div[role="textbox"]',
+      'div[aria-modal="true"] div[aria-label*="メッセージ本文"]',
+      'div[aria-modal="true"] div[aria-label*="Message body"]',
+      'div[aria-modal="true"] div[contenteditable="true"]',
+      'div[aria-modal="true"] div[role="textbox"]',
+      'div.nH.aHU div[aria-label*="メッセージ本文"]',
+      'div.nH.aHU div[aria-label*="Message body"]',
+      'div.nH.aHU div[contenteditable="true"]',
+      'div.nH.aHU div[role="textbox"]',
+    ];
+
+    for (const selector of popupInputSelectors) {
+      const element = document.querySelector(selector) as HTMLElement;
+      if (element) {
+        console.log(`Gmail: Found popup input with selector: ${selector}`);
+        return element;
+      }
+    }
+
+    console.log('Gmail: No popup input element found');
+    return null;
+  }
+
   isButtonInjected(): boolean {
-    return !!document.getElementById(GmailStrategy.BUTTON_ID);
+    const button = document.getElementById(GmailStrategy.BUTTON_ID);
+    if (!button) {
+      return false;
+    }
+
+    // ポップアップ表示の場合、ボタンがポップアップ内にあるかチェック
+    if (this.isPopupView()) {
+      const popupContainers = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"], div.nH.aHU');
+      for (const container of popupContainers) {
+        if (container.contains(button)) {
+          return true;
+        }
+      }
+      // ポップアップ表示なのにボタンがポップアップ外にある場合は再注入が必要
+      return false;
+    }
+
+    // 通常表示の場合、ボタンが存在すればOK
+    return true;
   }
 
   getThreadId(): string | null {
@@ -432,5 +612,120 @@ export class GmailStrategy implements ServiceStrategy {
 
   static getButtonId(): string {
     return GmailStrategy.BUTTON_ID;
+  }
+
+  /**
+   * ポップアップ表示かどうかを判定
+   */
+  private isPopupView(): boolean {
+    // ポップアップ表示の特徴的なDOM要素をチェック
+    const popupIndicators = [
+      // ポップアップ作成ウィンドウの特徴的なクラス
+      'div[role="dialog"]',
+      'div.nH.aHU', // Gmail のポップアップ作成ウィンドウ
+      'div[aria-modal="true"]',
+      // タイトルバーの存在（Re: TEST など）
+      'div[aria-label*="Re:"]',
+      'div[aria-label*="Fw:"]',
+      'div[aria-label*="返信:"]',
+      'div[aria-label*="転送:"]',
+    ];
+
+    for (const selector of popupIndicators) {
+      const element = document.querySelector(selector);
+      if (element) {
+        // ポップアップが現在表示されているかチェック
+        const style = window.getComputedStyle(element);
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          console.log(`Gmail: Popup indicator found: ${selector}`);
+          return true;
+        }
+      }
+    }
+
+    // URL パラメータをチェック（compose view）
+    const url = window.location.href;
+    if (url.includes('compose') || window.location.hash.includes('compose')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * ポップアップ表示用のツールバーを探す
+   */
+  private findPopupToolbar(): HTMLElement | null {
+    console.log('Gmail: Searching for popup toolbar...');
+
+    // ポップアップ表示特有のセレクター
+    const popupToolbarSelectors = [
+      // ポップアップダイアログ内のツールバー
+      'div[role="dialog"] div[role="toolbar"]',
+      'div[aria-modal="true"] div[role="toolbar"]',
+      'div.nH.aHU div[role="toolbar"]',
+      
+      // ポップアップ内の送信ボタン周辺
+      'div[role="dialog"] div[aria-label*="送信"]',
+      'div[role="dialog"] div[aria-label*="Send"]',
+      'div[aria-modal="true"] div[aria-label*="送信"]',
+      'div[aria-modal="true"] div[aria-label*="Send"]',
+      
+      // ポップアップ内のフォーマットツールバー
+      'div[role="dialog"] div[aria-label*="フォーマット"]',
+      'div[role="dialog"] div[aria-label*="Format"]',
+      'div[aria-modal="true"] div[aria-label*="フォーマット"]',
+      'div[aria-modal="true"] div[aria-label*="Format"]',
+      
+      // より具体的なGmailポップアップ構造
+      'div.nH.aHU div.aoT div[role="toolbar"]',
+      'div.nH.aHU div.Am div[role="toolbar"]',
+      'div.nH.aHU div.AD',
+      
+      // 送信ボタンの親要素
+      'button[aria-label*="送信"]',
+      'button[aria-label*="Send"]',
+      'div[role="button"][aria-label*="送信"]',
+      'div[role="button"][aria-label*="Send"]',
+    ];
+
+    for (const selector of popupToolbarSelectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        console.log(`Gmail: Found popup element with selector: ${selector}`);
+        
+        // ツールバーを見つけるか、送信ボタンの親要素を使用
+        let toolbar: HTMLElement | null = null;
+        
+        if (element.getAttribute('role') === 'toolbar') {
+          toolbar = element as HTMLElement;
+        } else {
+          // 送信ボタンの場合、その親要素のツールバーを探す
+          toolbar = element.closest('div[role="toolbar"]') as HTMLElement;
+          if (!toolbar) {
+            // ツールバーが見つからない場合、送信ボタンの親要素を使用
+            toolbar = element.parentElement as HTMLElement;
+          }
+        }
+
+        if (toolbar && this.isValidToolbar(toolbar)) {
+          console.log('Gmail: Found valid popup toolbar');
+          return toolbar;
+        }
+      }
+    }
+
+    // フォールバック：ポップアップ内の任意のツールバー
+    const dialogs = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"], div.nH.aHU');
+    for (const dialog of dialogs) {
+      const toolbar = dialog.querySelector('div[role="toolbar"]');
+      if (toolbar && this.isValidToolbar(toolbar as HTMLElement)) {
+        console.log('Gmail: Found popup toolbar via dialog fallback');
+        return toolbar as HTMLElement;
+      }
+    }
+
+    console.log('Gmail: No popup toolbar found');
+    return null;
   }
 }
