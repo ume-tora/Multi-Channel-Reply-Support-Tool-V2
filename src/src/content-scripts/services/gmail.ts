@@ -151,6 +151,13 @@ export class GmailStrategy implements ServiceStrategy {
         }
       }
 
+      // 6. 最後の手段: 強制的にボタン配置エリアを作成
+      console.warn('Gmail: No insertion point found, attempting forced placement');
+      const forcedContainer = this.createForcedButtonContainer();
+      if (forcedContainer) {
+        return forcedContainer;
+      }
+
       console.warn('Gmail: No insertion point found after exhaustive search');
       this.logCurrentDOMState();
       return null;
@@ -247,7 +254,10 @@ export class GmailStrategy implements ServiceStrategy {
 
   private logCurrentDOMState(): void {
     // デバッグ用: 現在のDOM状態をログに出力
-    console.log('Gmail: Current DOM state analysis:');
+    console.log('=== Gmail DOM State Analysis ===');
+    
+    // ポップアップ検出状態
+    console.log(`Gmail: Popup detected: ${this.isPopupView()}`);
     
     // 基本的なGmail要素の存在確認
     const gmailElements = [
@@ -256,23 +266,62 @@ export class GmailStrategy implements ServiceStrategy {
       'div[aria-label*="返信"]',
       'div[contenteditable="true"]',
       'div[role="textbox"]',
+      'div[role="dialog"]',
+      'div[aria-modal="true"]',
+      'div.nH.aHU',
     ];
     
     gmailElements.forEach(selector => {
       const elements = document.querySelectorAll(selector);
       console.log(`Gmail: Found ${elements.length} elements matching "${selector}"`);
+      if (elements.length > 0) {
+        elements.forEach((el, idx) => {
+          const style = window.getComputedStyle(el);
+          const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          console.log(`  Element ${idx}: visible=${isVisible}, class="${el.className}", id="${el.id}"`);
+        });
+      }
     });
     
     // URLも確認
     console.log(`Gmail: Current URL: ${window.location.href}`);
+    console.log(`Gmail: Current Hash: ${window.location.hash}`);
     
     // 全てのツールバーを確認
     const allToolbars = document.querySelectorAll('div[role="toolbar"]');
     console.log(`Gmail: Found ${allToolbars.length} toolbar elements`);
     allToolbars.forEach((toolbar, index) => {
       const element = toolbar as HTMLElement;
-      console.log(`Gmail: Toolbar ${index}: visible=${this.isValidToolbar(element)}, text="${element.textContent?.substring(0, 100)}"`);
+      const isValid = this.isValidToolbar(element);
+      const parentClass = element.parentElement?.className || 'no-parent';
+      console.log(`Gmail: Toolbar ${index}: valid=${isValid}, parent="${parentClass}", text="${element.textContent?.substring(0, 50)}"`);
     });
+
+    // ポップアップ特有の要素を詳細チェック
+    if (this.isPopupView()) {
+      console.log('=== Popup Specific Analysis ===');
+      const popupContainers = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"], div.nH.aHU');
+      popupContainers.forEach((container, idx) => {
+        console.log(`Popup Container ${idx}: class="${container.className}"`);
+        
+        // 内部のツールバーをチェック
+        const internalToolbars = container.querySelectorAll('div[role="toolbar"]');
+        console.log(`  Internal toolbars: ${internalToolbars.length}`);
+        
+        // 送信ボタンをチェック
+        const sendButtons = container.querySelectorAll('button[aria-label*="送信"], button[aria-label*="Send"]');
+        console.log(`  Send buttons: ${sendButtons.length}`);
+        sendButtons.forEach((btn, btnIdx) => {
+          console.log(`    Send button ${btnIdx}: "${btn.getAttribute('aria-label')}", parent="${btn.parentElement?.className}"`);
+        });
+
+        // 編集可能な要素をチェック
+        const editableElements = container.querySelectorAll('div[contenteditable="true"]');
+        console.log(`  Editable elements: ${editableElements.length}`);
+      });
+    }
+    
+    console.log('=== End DOM Analysis ===');
   }
 
   extractMessages(): Message[] {
@@ -826,5 +875,132 @@ export class GmailStrategy implements ServiceStrategy {
       console.error('Gmail: Error creating fallback container:', error);
       return null;
     }
+  }
+
+  /**
+   * 最後の手段: 強制的にボタン配置エリアを作成
+   */
+  private createForcedButtonContainer(): HTMLElement | null {
+    console.log('Gmail: Creating forced button container...');
+
+    try {
+      // 1. ポップアップ表示の場合
+      if (this.isPopupView()) {
+        return this.createForcedPopupContainer();
+      }
+
+      // 2. 通常表示の場合
+      return this.createForcedInlineContainer();
+
+    } catch (error) {
+      console.error('Gmail: Error creating forced container:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ポップアップ表示用の強制コンテナ作成
+   */
+  private createForcedPopupContainer(): HTMLElement | null {
+    console.log('Gmail: Creating forced popup container...');
+
+    // まず、送信ボタンを探す
+    const sendButtonSelectors = [
+      'button[aria-label*="送信"]',
+      'button[aria-label*="Send"]',
+      'div[role="button"][aria-label*="送信"]',
+      'div[role="button"][aria-label*="Send"]',
+    ];
+
+    for (const selector of sendButtonSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && this.isElementInPopup(sendButton)) {
+        console.log(`Gmail: Found send button in popup: ${selector}`);
+        
+        // 送信ボタンの直前に配置エリアを作成
+        const container = document.createElement('div');
+        container.style.cssText = `
+          display: inline-flex;
+          align-items: center;
+          margin-right: 8px;
+        `;
+        
+        // 送信ボタンの前に挿入
+        sendButton.parentElement?.insertBefore(container, sendButton);
+        console.log('Gmail: Created forced popup container before send button');
+        return container;
+      }
+    }
+
+    // 送信ボタンが見つからない場合、編集可能エリアの近くに配置
+    const editableSelectors = [
+      'div[contenteditable="true"]',
+      'div[role="textbox"]',
+    ];
+
+    for (const selector of editableSelectors) {
+      const editableElement = document.querySelector(selector);
+      if (editableElement && this.isElementInPopup(editableElement)) {
+        console.log(`Gmail: Found editable element in popup: ${selector}`);
+        
+        // 編集エリアの下に配置エリアを作成
+        const container = document.createElement('div');
+        container.style.cssText = `
+          display: flex;
+          justify-content: flex-end;
+          padding: 8px;
+          border-top: 1px solid #e0e0e0;
+        `;
+        
+        // 編集エリアの親要素の後に挿入
+        const parentElement = editableElement.parentElement;
+        if (parentElement) {
+          parentElement.insertAdjacentElement('afterend', container);
+          console.log('Gmail: Created forced popup container after editable area');
+          return container;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * インライン表示用の強制コンテナ作成
+   */
+  private createForcedInlineContainer(): HTMLElement | null {
+    console.log('Gmail: Creating forced inline container...');
+
+    // 編集可能エリアを探す
+    const editableElement = document.querySelector('div[contenteditable="true"]');
+    if (editableElement) {
+      // 編集エリアの近くに配置
+      const container = document.createElement('div');
+      container.style.cssText = `
+        display: flex;
+        justify-content: flex-end;
+        padding: 8px;
+        margin-top: 8px;
+      `;
+      
+      editableElement.parentElement?.appendChild(container);
+      console.log('Gmail: Created forced inline container');
+      return container;
+    }
+
+    return null;
+  }
+
+  /**
+   * 要素がポップアップ内にあるかチェック
+   */
+  private isElementInPopup(element: Element): boolean {
+    const popupContainers = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"], div.nH.aHU');
+    for (const container of popupContainers) {
+      if (container.contains(element)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

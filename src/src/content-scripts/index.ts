@@ -212,6 +212,13 @@ class ContentScriptManager {
         this.lastInjectionTime = Date.now();
       } else {
         console.log('Insertion point not found');
+        
+        // デバッグ: DOM状態を詳細出力（Gmailの場合のみ）
+        if (this.strategy && this.strategy.getServiceName() === 'gmail') {
+          console.log('Gmail strategy detected, logging DOM state for debugging...');
+          (this.strategy as any).logCurrentDOMState?.();
+        }
+        
         this.scheduleRetry();
       }
     } catch (error) {
@@ -373,12 +380,29 @@ class ContentScriptManager {
           for (const node of mutation.addedNodes) {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
+              
+              // Gmail popup detection: ポップアップダイアログが追加された場合
+              if (element.matches && (
+                element.matches('[role="dialog"]') ||
+                element.matches('[aria-modal="true"]') ||
+                element.matches('.nH.aHU') ||
+                element.querySelector('[role="dialog"]') ||
+                element.querySelector('[aria-modal="true"]') ||
+                element.querySelector('.nH.aHU')
+              )) {
+                console.log('Gmail popup dialog detected via mutation observer');
+                shouldCheck = true;
+                break;
+              }
+              
               // Only check if the added node might contain toolbars
               if (element.querySelector && (
                 element.querySelector('[role="toolbar"]') ||
                 element.matches('[role="toolbar"]') ||
                 element.querySelector('[contenteditable="true"]') ||
-                element.matches('[contenteditable="true"]')
+                element.matches('[contenteditable="true"]') ||
+                element.querySelector('button[aria-label*="送信"]') ||
+                element.querySelector('button[aria-label*="Send"]')
               )) {
                 shouldCheck = true;
                 break;
@@ -390,6 +414,7 @@ class ContentScriptManager {
       }
 
       if (shouldCheck) {
+        console.log('DOM mutation detected, scheduling button check...');
         this.debounceCheck();
       }
     });
@@ -399,7 +424,7 @@ class ContentScriptManager {
       subtree: true,
     });
 
-    console.log('DOM observer started');
+    console.log('DOM observer started with popup detection');
   }
 
   private debounceCheck(): void {
