@@ -263,11 +263,11 @@ class ContentScriptManager {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 24px;
-      height: 24px;
-      padding: 8px;
-      margin: 0 2px;
-      border-radius: 4px;
+      min-width: 32px;
+      height: 32px;
+      padding: 4px;
+      margin: 0 4px;
+      border-radius: 20px;
       cursor: pointer;
       background: linear-gradient(135deg, #10B981, #059669);
       color: white;
@@ -277,10 +277,11 @@ class ContentScriptManager {
       transition: all 0.2s ease;
       z-index: 1000;
       position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     `;
     
     // アイコンとテキストを設定
-    button.innerHTML = '<span style="font-size: 14px;">🤖</span>';
+    button.innerHTML = '<span style="font-size: 16px;">🤖</span>';
     button.title = 'AI返信生成';
     
     // ホバー効果

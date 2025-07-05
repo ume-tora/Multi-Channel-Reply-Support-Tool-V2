@@ -945,27 +945,14 @@ export class GmailStrategy implements ServiceStrategy {
         if (toolbar) {
           console.log('Gmail: Found toolbar container for integration');
           
-          // ツールバー内の他のアイコンを探す
-          const otherIcons = toolbar.querySelectorAll('div[role="button"], button');
-          
-          // 送信ボタンの直前の適切な位置を見つける
-          let insertionPoint = sendButton;
-          
-          // 送信ボタンの前にある最後のアイコンを探す
-          for (let i = otherIcons.length - 1; i >= 0; i--) {
-            const icon = otherIcons[i];
-            if (icon !== sendButton && toolbar.contains(icon)) {
-              // このアイコンの後に挿入
-              insertionPoint = icon.nextElementSibling as HTMLElement || sendButton;
-              break;
-            }
-          }
+          // 送信ボタンの直前に挿入（理想的な位置）
+          console.log('Gmail: Inserting AI button before send button in toolbar');
           
           // AIボタンを作成（ツールバースタイルに合わせる）
           const aiButton = this.createToolbarStyleButton();
           
-          // 適切な位置に挿入
-          toolbar.insertBefore(aiButton, insertionPoint);
+          // 送信ボタンの直前に挿入
+          toolbar.insertBefore(aiButton, sendButton);
           
           console.log('Gmail: AI button integrated into popup toolbar');
           return aiButton.parentElement as HTMLElement;
