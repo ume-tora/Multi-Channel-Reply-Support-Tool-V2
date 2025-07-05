@@ -307,12 +307,32 @@ export class GmailStrategy implements ServiceStrategy {
         // 内部のツールバーをチェック
         const internalToolbars = container.querySelectorAll('div[role="toolbar"]');
         console.log(`  Internal toolbars: ${internalToolbars.length}`);
+        internalToolbars.forEach((tb, tbIdx) => {
+          console.log(`    Toolbar ${tbIdx}: class="${tb.className}"`);
+          const tbButtons = tb.querySelectorAll('button, div[role="button"]');
+          console.log(`      Buttons in toolbar: ${tbButtons.length}`);
+          tbButtons.forEach((btn, btnIdx) => {
+            console.log(`        Button ${btnIdx}: "${btn.getAttribute('aria-label') || btn.textContent?.substring(0, 20)}", tag="${btn.tagName}"`);
+          });
+        });
         
         // 送信ボタンをチェック
         const sendButtons = container.querySelectorAll('button[aria-label*="送信"], button[aria-label*="Send"]');
         console.log(`  Send buttons: ${sendButtons.length}`);
         sendButtons.forEach((btn, btnIdx) => {
-          console.log(`    Send button ${btnIdx}: "${btn.getAttribute('aria-label')}", parent="${btn.parentElement?.className}"`);
+          console.log(`    Send button ${btnIdx}: "${btn.getAttribute('aria-label')}"`);
+          console.log(`      Parent: "${btn.parentElement?.className}"`);
+          console.log(`      Parent tag: "${btn.parentElement?.tagName}"`);
+          
+          // 送信ボタンの兄弟要素をチェック
+          const siblings = btn.parentElement?.children;
+          if (siblings) {
+            console.log(`      Siblings: ${siblings.length}`);
+            for (let i = 0; i < siblings.length; i++) {
+              const sibling = siblings[i];
+              console.log(`        Sibling ${i}: tag="${sibling.tagName}", class="${sibling.className}", text="${sibling.textContent?.substring(0, 15)}"`);
+            }
+          }
         });
 
         // 編集可能な要素をチェック
@@ -924,7 +944,7 @@ export class GmailStrategy implements ServiceStrategy {
    * 送信ボタンのツールバー内に配置（推奨方法）
    */
   private createPopupToolbarContainer(): HTMLElement | null {
-    console.log('Gmail: Attempting toolbar integration...');
+    console.log('Gmail: Attempting precise toolbar integration...');
 
     const sendButtonSelectors = [
       'button[aria-label*="送信"]',
@@ -936,30 +956,121 @@ export class GmailStrategy implements ServiceStrategy {
     for (const selector of sendButtonSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && this.isElementInPopup(sendButton)) {
-        console.log(`Gmail: Found send button for toolbar integration: ${selector}`);
+        console.log(`Gmail: Found send button for precise integration: ${selector}`);
+        console.log(`Send button parent classes: ${sendButton.parentElement?.className}`);
         
-        // 送信ボタンの親ツールバーを特定
-        const toolbar = sendButton.closest('div[role="toolbar"]') || 
-                       sendButton.parentElement;
-        
-        if (toolbar) {
-          console.log('Gmail: Found toolbar container for integration');
+        // 戦略1: 送信ボタンの直前（同じ親要素内）に配置
+        const directParent = sendButton.parentElement;
+        if (directParent) {
+          console.log('Gmail: Attempting direct parent insertion');
           
-          // 送信ボタンの直前に挿入（理想的な位置）
-          console.log('Gmail: Inserting AI button before send button in toolbar');
-          
-          // AIボタンを作成（ツールバースタイルに合わせる）
-          const aiButton = this.createToolbarStyleButton();
+          // 送信ボタンの直前に専用コンテナを作成
+          const aiContainer = document.createElement('div');
+          aiContainer.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            margin-right: 8px;
+          `;
           
           // 送信ボタンの直前に挿入
-          toolbar.insertBefore(aiButton, sendButton);
+          directParent.insertBefore(aiContainer, sendButton);
+          console.log('Gmail: Created AI container before send button');
+          return aiContainer;
+        }
+        
+        // 戦略2: より具体的なツールバー検索
+        const specificToolbar = this.findSpecificGmailToolbar(sendButton);
+        if (specificToolbar) {
+          console.log('Gmail: Found specific Gmail toolbar');
           
-          console.log('Gmail: AI button integrated into popup toolbar');
-          return aiButton.parentElement as HTMLElement;
+          // ツールバー内の適切な位置を特定
+          const insertionPoint = this.findOptimalInsertionPoint(specificToolbar, sendButton);
+          
+          const aiContainer = document.createElement('div');
+          aiContainer.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            margin: 0 4px;
+          `;
+          
+          if (insertionPoint) {
+            specificToolbar.insertBefore(aiContainer, insertionPoint);
+          } else {
+            // 送信ボタンの前に挿入
+            const sendButtonInToolbar = specificToolbar.querySelector('button[aria-label*="送信"], button[aria-label*="Send"]');
+            if (sendButtonInToolbar) {
+              specificToolbar.insertBefore(aiContainer, sendButtonInToolbar);
+            } else {
+              specificToolbar.appendChild(aiContainer);
+            }
+          }
+          
+          console.log('Gmail: AI container placed in specific toolbar');
+          return aiContainer;
         }
       }
     }
 
+    return null;
+  }
+
+  /**
+   * より具体的なGmailツールバーを検索
+   */
+  private findSpecificGmailToolbar(sendButton: Element): HTMLElement | null {
+    // 送信ボタンから上位に向かってツールバーを探す
+    let current = sendButton.parentElement;
+    let depth = 0;
+    const maxDepth = 5;
+    
+    while (current && depth < maxDepth) {
+      // role="toolbar"を持つ要素
+      if (current.getAttribute('role') === 'toolbar') {
+        console.log(`Found toolbar at depth ${depth}: ${current.className}`);
+        return current as HTMLElement;
+      }
+      
+      // Gmail特有のツールバークラスを持つ要素
+      if (current.className && (
+        current.className.includes('btC') || // Gmail toolbar class
+        current.className.includes('aOy') || // Another Gmail toolbar class
+        current.className.includes('ams')    // Yet another Gmail class
+      )) {
+        console.log(`Found Gmail-specific toolbar at depth ${depth}: ${current.className}`);
+        return current as HTMLElement;
+      }
+      
+      current = current.parentElement;
+      depth++;
+    }
+    
+    return null;
+  }
+
+  /**
+   * ツールバー内の最適な挿入位置を特定
+   */
+  private findOptimalInsertionPoint(toolbar: HTMLElement, sendButton: Element): Element | null {
+    const allButtons = toolbar.querySelectorAll('button, div[role="button"]');
+    let sendButtonIndex = -1;
+    
+    // 送信ボタンのインデックスを特定
+    for (let i = 0; i < allButtons.length; i++) {
+      if (allButtons[i] === sendButton || allButtons[i].contains(sendButton)) {
+        sendButtonIndex = i;
+        break;
+      }
+    }
+    
+    if (sendButtonIndex > 0) {
+      // 送信ボタンの前のボタンの後に挿入
+      const previousButton = allButtons[sendButtonIndex - 1];
+      return previousButton.nextElementSibling;
+    } else if (sendButtonIndex === 0) {
+      // 送信ボタンが最初の場合、その前に挿入
+      return sendButton;
+    }
+    
     return null;
   }
 
