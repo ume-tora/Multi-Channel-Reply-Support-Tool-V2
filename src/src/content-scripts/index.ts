@@ -53,7 +53,7 @@ class ContentScriptManager {
         align-items: center;
         gap: 6px;
         padding: 8px 12px;
-        background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+        background: linear-gradient(135deg, #10B981, #059669);
         color: white;
         border: none;
         border-radius: 6px;
@@ -62,13 +62,15 @@ class ContentScriptManager {
         cursor: pointer;
         transition: all 0.2s ease;
         margin: 0 8px;
-        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        z-index: 1000;
+        position: relative;
       }
       
       .gemini-reply-button:hover {
-        background: linear-gradient(135deg, #2563EB, #1E40AF);
+        background: linear-gradient(135deg, #059669, #047857);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
       }
       
       .gemini-reply-button:disabled {

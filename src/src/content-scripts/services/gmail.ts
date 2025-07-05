@@ -21,7 +21,15 @@ export class GmailStrategy implements ServiceStrategy {
         console.log('Gmail: Detected popup compose view');
         const popupToolbar = this.findPopupToolbar();
         if (popupToolbar) {
+          console.log('Gmail: Found popup toolbar successfully');
           return popupToolbar;
+        } else {
+          console.warn('Gmail: Popup detected but no toolbar found, trying fallback');
+          // フォールバック: ポップアップ内で適切な要素を作成
+          const fallbackContainer = this.createPopupFallbackContainer();
+          if (fallbackContainer) {
+            return fallbackContainer;
+          }
         }
       }
 
@@ -618,12 +626,17 @@ export class GmailStrategy implements ServiceStrategy {
    * ポップアップ表示かどうかを判定
    */
   private isPopupView(): boolean {
+    console.log('Gmail: Checking for popup view...');
+    
     // ポップアップ表示の特徴的なDOM要素をチェック
     const popupIndicators = [
       // ポップアップ作成ウィンドウの特徴的なクラス
       'div[role="dialog"]',
       'div.nH.aHU', // Gmail のポップアップ作成ウィンドウ
       'div[aria-modal="true"]',
+      // より具体的なGmailポップアップセレクター
+      'div[jsname][role="dialog"]',
+      'div[data-is-compose="true"]',
       // タイトルバーの存在（Re: TEST など）
       'div[aria-label*="Re:"]',
       'div[aria-label*="Fw:"]',
@@ -631,25 +644,52 @@ export class GmailStrategy implements ServiceStrategy {
       'div[aria-label*="転送:"]',
     ];
 
+    let foundPopup = false;
     for (const selector of popupIndicators) {
       const element = document.querySelector(selector);
       if (element) {
         // ポップアップが現在表示されているかチェック
         const style = window.getComputedStyle(element);
-        if (style.display !== 'none' && style.visibility !== 'hidden') {
+        const isVisible = style.display !== 'none' && 
+                         style.visibility !== 'hidden' && 
+                         style.opacity !== '0';
+        
+        if (isVisible) {
           console.log(`Gmail: Popup indicator found: ${selector}`);
-          return true;
+          foundPopup = true;
+          break;
         }
       }
     }
 
     // URL パラメータをチェック（compose view）
     const url = window.location.href;
-    if (url.includes('compose') || window.location.hash.includes('compose')) {
-      return true;
+    const hash = window.location.hash;
+    const urlHasCompose = url.includes('compose') || hash.includes('compose');
+    
+    if (urlHasCompose) {
+      console.log('Gmail: Compose URL detected');
+      foundPopup = true;
     }
 
-    return false;
+    // DOM構造をより詳細にチェック
+    if (!foundPopup) {
+      // より広範囲でポップアップを検索
+      const allDialogs = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"]');
+      for (const dialog of allDialogs) {
+        const hasComposeElements = dialog.querySelector('div[contenteditable="true"]') ||
+                                  dialog.querySelector('button[aria-label*="送信"]') ||
+                                  dialog.querySelector('button[aria-label*="Send"]');
+        if (hasComposeElements) {
+          console.log('Gmail: Found compose dialog via content detection');
+          foundPopup = true;
+          break;
+        }
+      }
+    }
+
+    console.log(`Gmail: Popup view detected: ${foundPopup}`);
+    return foundPopup;
   }
 
   /**
@@ -664,12 +704,13 @@ export class GmailStrategy implements ServiceStrategy {
       'div[role="dialog"] div[role="toolbar"]',
       'div[aria-modal="true"] div[role="toolbar"]',
       'div.nH.aHU div[role="toolbar"]',
+      'div[jsname][role="dialog"] div[role="toolbar"]',
       
-      // ポップアップ内の送信ボタン周辺
-      'div[role="dialog"] div[aria-label*="送信"]',
-      'div[role="dialog"] div[aria-label*="Send"]',
-      'div[aria-modal="true"] div[aria-label*="送信"]',
-      'div[aria-modal="true"] div[aria-label*="Send"]',
+      // より具体的なGmailポップアップ構造
+      'div.nH.aHU div.aoT div[role="toolbar"]',
+      'div.nH.aHU div.Am div[role="toolbar"]',
+      'div.nH.aHU div.AD',
+      'div.nH.aHU div.aYF', // Gmail compose toolbar
       
       // ポップアップ内のフォーマットツールバー
       'div[role="dialog"] div[aria-label*="フォーマット"]',
@@ -677,16 +718,15 @@ export class GmailStrategy implements ServiceStrategy {
       'div[aria-modal="true"] div[aria-label*="フォーマット"]',
       'div[aria-modal="true"] div[aria-label*="Format"]',
       
-      // より具体的なGmailポップアップ構造
-      'div.nH.aHU div.aoT div[role="toolbar"]',
-      'div.nH.aHU div.Am div[role="toolbar"]',
-      'div.nH.aHU div.AD',
-      
-      // 送信ボタンの親要素
-      'button[aria-label*="送信"]',
-      'button[aria-label*="Send"]',
-      'div[role="button"][aria-label*="送信"]',
-      'div[role="button"][aria-label*="Send"]',
+      // ポップアップ内の送信ボタン周辺（最後に試す）
+      'div[role="dialog"] button[aria-label*="送信"]',
+      'div[role="dialog"] button[aria-label*="Send"]',
+      'div[aria-modal="true"] button[aria-label*="送信"]',
+      'div[aria-modal="true"] button[aria-label*="Send"]',
+      'div.nH.aHU button[aria-label*="送信"]',
+      'div.nH.aHU button[aria-label*="Send"]',
+      'div[role="dialog"] div[role="button"][aria-label*="送信"]',
+      'div[role="dialog"] div[role="button"][aria-label*="Send"]',
     ];
 
     for (const selector of popupToolbarSelectors) {
@@ -727,5 +767,64 @@ export class GmailStrategy implements ServiceStrategy {
 
     console.log('Gmail: No popup toolbar found');
     return null;
+  }
+
+  /**
+   * ポップアップ表示でツールバーが見つからない場合のフォールバック
+   */
+  private createPopupFallbackContainer(): HTMLElement | null {
+    console.log('Gmail: Creating popup fallback container');
+
+    try {
+      // ポップアップ内の送信ボタンを探す
+      const sendButtonSelectors = [
+        'div[role="dialog"] button[aria-label*="送信"]',
+        'div[role="dialog"] button[aria-label*="Send"]',
+        'div[aria-modal="true"] button[aria-label*="送信"]',
+        'div[aria-modal="true"] button[aria-label*="Send"]',
+        'div.nH.aHU button[aria-label*="送信"]',
+        'div.nH.aHU button[aria-label*="Send"]',
+        'div[role="dialog"] div[role="button"][aria-label*="送信"]',
+        'div[role="dialog"] div[role="button"][aria-label*="Send"]',
+      ];
+
+      for (const selector of sendButtonSelectors) {
+        const sendButton = document.querySelector(selector);
+        if (sendButton) {
+          console.log(`Gmail: Found send button for fallback: ${selector}`);
+          
+          // 送信ボタンの親要素を取得
+          const parentContainer = sendButton.parentElement;
+          if (parentContainer) {
+            console.log('Gmail: Using send button parent as fallback container');
+            return parentContainer as HTMLElement;
+          }
+        }
+      }
+
+      // 最後の手段：ポップアップ内のフォーム要素を探す
+      const formSelectors = [
+        'div[role="dialog"] form',
+        'div[aria-modal="true"] form',
+        'div.nH.aHU form',
+        'div[role="dialog"] div[class*="form"]',
+        'div[aria-modal="true"] div[class*="form"]',
+      ];
+
+      for (const selector of formSelectors) {
+        const formElement = document.querySelector(selector);
+        if (formElement) {
+          console.log(`Gmail: Found form element for fallback: ${selector}`);
+          return formElement as HTMLElement;
+        }
+      }
+
+      console.warn('Gmail: No fallback container found');
+      return null;
+
+    } catch (error) {
+      console.error('Gmail: Error creating fallback container:', error);
+      return null;
+    }
   }
 }
