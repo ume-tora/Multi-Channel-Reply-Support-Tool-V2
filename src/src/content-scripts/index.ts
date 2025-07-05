@@ -260,29 +260,55 @@ class ContentScriptManager {
     button.setAttribute('aria-label', 'AI返信生成');
     button.className = 'gemini-reply-button';
     button.style.cssText = `
-      display: inline-flex;
+      display: inline-flex !important;
       align-items: center;
       justify-content: center;
       min-width: 32px;
       height: 32px;
       padding: 4px;
-      margin: 0 4px;
+      margin: 0 8px;
       border-radius: 20px;
       cursor: pointer;
-      background: linear-gradient(135deg, #10B981, #059669);
-      color: white;
+      background: linear-gradient(135deg, #10B981, #059669) !important;
+      color: white !important;
       font-size: 12px;
       font-weight: 500;
-      border: none;
+      border: 2px solid #047857 !important;
       transition: all 0.2s ease;
-      z-index: 1000;
-      position: relative;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      z-index: 9999 !important;
+      position: relative !important;
+      box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      max-width: none !important;
+      max-height: none !important;
+      overflow: visible !important;
     `;
     
-    // アイコンとテキストを設定
-    button.innerHTML = '<span style="font-size: 16px;">🤖</span>';
+    // アイコンとテキストを設定（非常に目立つテスト用）
+    button.innerHTML = '<span style="font-size: 18px; font-weight: bold;">🤖 AI</span>';
     button.title = 'AI返信生成';
+    
+    // テスト用: 非常に目立つスタイル
+    setTimeout(() => {
+      button.style.background = 'linear-gradient(135deg, #FF6B6B, #FF8E53) !important';
+      button.style.border = '3px solid #FF4757 !important';
+      button.style.animation = 'pulse 2s infinite';
+      
+      // CSSアニメーションを追加
+      if (!document.getElementById('ai-button-pulse-animation')) {
+        const style = document.createElement('style');
+        style.id = 'ai-button-pulse-animation';
+        style.textContent = `
+          @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }, 100);
     
     // ホバー効果
     button.addEventListener('mouseenter', () => {
@@ -298,7 +324,14 @@ class ContentScriptManager {
     button.addEventListener('click', () => this.handleButtonClick());
     
     container.appendChild(button);
+    
+    // デバッグ: ボタンの配置を確認
+    const rect = button.getBoundingClientRect();
     console.log('Gmail toolbar button injected');
+    console.log(`Button position: x=${rect.x}, y=${rect.y}, width=${rect.width}, height=${rect.height}`);
+    console.log(`Button visible: ${rect.width > 0 && rect.height > 0}`);
+    console.log(`Container class: ${container.className}`);
+    console.log(`Container parent: ${container.parentElement?.tagName}.${container.parentElement?.className}`);
   }
 
   /**
