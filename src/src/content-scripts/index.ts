@@ -20,13 +20,25 @@ class ContentScriptManager {
   }
 
   private init(): void {
-    console.log('Multi Channel Reply Support Tool: Content script initialized');
+    // iframe内での実行を検出
+    const isInIframe = window.self !== window.top;
+    const frameInfo = isInIframe ? 'iframe' : 'main frame';
     
-    // スタイルシートを注入
+    console.log(`Multi Channel Reply Support Tool: Content script initialized in ${frameInfo}`);
+    console.log(`Current URL: ${window.location.href}`);
+    console.log(`Frame depth: ${this.getFrameDepth()}`);
+    
+    // スタイルシートを注入（メインフレームとiframe両方で必要）
     this.injectStyles();
     
     // 現在のURLを記録
     this.currentUrl = window.location.href;
+    
+    // Google Chat iframe内での特別処理
+    if (isInIframe && window.location.hostname === 'chat.google.com') {
+      console.log('🎯 Google Chat iframe detected - enhanced injection mode');
+      this.setupGoogleChatIframeMode();
+    }
     
     // 初期チェック
     this.checkAndInjectButton();
@@ -213,10 +225,29 @@ class ContentScriptManager {
       } else {
         console.log('Insertion point not found');
         
-        // デバッグ: DOM状態を詳細出力（Gmailの場合のみ）
-        if (this.strategy && this.strategy.getServiceName() === 'gmail') {
-          console.log('Gmail strategy detected, logging DOM state for debugging...');
+        // デバッグ: DOM状態を詳細出力（GmailとGoogle Chatの場合）
+        if (this.strategy && (this.strategy.getServiceName() === 'gmail' || this.strategy.getServiceName() === 'google-chat')) {
+          console.log(`${this.strategy.getServiceName()} strategy detected, logging DOM state for debugging...`);
           (this.strategy as any).logCurrentDOMState?.();
+          
+          // Google Chatの場合、絶対確実な緊急注入を実行
+          if (this.strategy.getServiceName() === 'google-chat') {
+            console.log('🚨 === GOOGLE CHAT EMERGENCY PROTOCOL ===');
+            
+            // **緊急注入プロトコル実行**
+            const emergencyResult = this.executeEmergencyInjection();
+            if (emergencyResult) {
+              console.log('✅ Emergency injection SUCCESS!');
+              return; // 成功したので終了
+            }
+            
+            console.log('🚨 Emergency injection FAILED - trying force injection...');
+            const forceInsertionPoint = (this.strategy as any).forceInjectButton?.();
+            if (forceInsertionPoint) {
+              console.log('Google Chat: Force injection point found, injecting button...');
+              this.injectReplyButton(forceInsertionPoint);
+            }
+          }
         }
         
         this.scheduleRetry();
@@ -250,7 +281,7 @@ class ContentScriptManager {
   }
 
   /**
-   * Gmailツールバー用のボタン挿入
+   * Gmailツールバー用のボタン挿入（画面内配置保証）
    */
   private injectGmailToolbarButton(container: HTMLElement, buttonId: string): void {
     // Gmailツールバーのスタイルに合わせたボタンを作成
@@ -259,15 +290,17 @@ class ContentScriptManager {
     button.setAttribute('role', 'button');
     button.setAttribute('aria-label', 'AI返信生成');
     button.className = 'gemini-reply-button';
+    
+    // 基本スタイル設定
     button.style.cssText = `
       display: inline-flex !important;
       align-items: center;
       justify-content: center;
-      min-width: 32px;
+      width: 40px;
       height: 32px;
       padding: 4px;
-      margin: 0 8px;
-      border-radius: 20px;
+      margin: 0 4px;
+      border-radius: 16px;
       cursor: pointer;
       background: linear-gradient(135deg, #10B981, #059669) !important;
       color: white !important;
@@ -277,61 +310,98 @@ class ContentScriptManager {
       transition: all 0.2s ease;
       z-index: 9999 !important;
       position: relative !important;
-      box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4) !important;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3) !important;
       opacity: 1 !important;
       visibility: visible !important;
-      max-width: none !important;
-      max-height: none !important;
-      overflow: visible !important;
+      flex-shrink: 0 !important;
+      white-space: nowrap !important;
     `;
     
-    // アイコンとテキストを設定（非常に目立つテスト用）
-    button.innerHTML = '<span style="font-size: 18px; font-weight: bold;">🤖 AI</span>';
+    // アイコンとテキストを設定（コンパクトデザイン）
+    button.innerHTML = '<span style="font-size: 16px;">🤖</span>';
     button.title = 'AI返信生成';
-    
-    // テスト用: 非常に目立つスタイル
-    setTimeout(() => {
-      button.style.background = 'linear-gradient(135deg, #FF6B6B, #FF8E53) !important';
-      button.style.border = '3px solid #FF4757 !important';
-      button.style.animation = 'pulse 2s infinite';
-      
-      // CSSアニメーションを追加
-      if (!document.getElementById('ai-button-pulse-animation')) {
-        const style = document.createElement('style');
-        style.id = 'ai-button-pulse-animation';
-        style.textContent = `
-          @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    }, 100);
     
     // ホバー効果
     button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(135deg, #059669, #047857)';
+      button.style.background = 'linear-gradient(135deg, #059669, #047857) !important';
       button.style.transform = 'scale(1.05)';
     });
     
     button.addEventListener('mouseleave', () => {
-      button.style.background = 'linear-gradient(135deg, #10B981, #059669)';
+      button.style.background = 'linear-gradient(135deg, #10B981, #059669) !important';
       button.style.transform = 'scale(1)';
     });
     
     button.addEventListener('click', () => this.handleButtonClick());
     
-    container.appendChild(button);
+    // 画面内配置戦略の実装
+    this.positionButtonWithinScreen(button, container);
     
     // デバッグ: ボタンの配置を確認
+    setTimeout(() => {
+      const rect = button.getBoundingClientRect();
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      
+      console.log('Gmail toolbar button positioned');
+      console.log(`Button position: x=${rect.x}, y=${rect.y}, width=${rect.width}, height=${rect.height}`);
+      console.log(`Screen size: ${screenWidth}x${screenHeight}`);
+      console.log(`Button within screen: x=${rect.x >= 0 && rect.right <= screenWidth}, y=${rect.y >= 0 && rect.bottom <= screenHeight}`);
+      console.log(`Container class: ${container.className}`);
+      
+      // 画面外チェック
+      if (rect.right > screenWidth || rect.x < 0) {
+        console.warn('Button is outside horizontal screen bounds, attempting repositioning...');
+        this.repositionButtonHorizontally(button, container);
+      }
+    }, 100);
+  }
+  
+  /**
+   * ボタンを画面内に配置する戦略的メソッド
+   */
+  private positionButtonWithinScreen(button: HTMLElement, container: HTMLElement): void {
+    // 1. 送信ボタンの左側に配置を試みる
+    const sendButton = container.querySelector('button[aria-label*="送信"], button[aria-label*="Send"]');
+    if (sendButton) {
+      console.log('Attempting to position before send button');
+      sendButton.parentElement?.insertBefore(button, sendButton);
+      return;
+    }
+    
+    // 2. ツールバーの左端に配置を試みる
+    const toolbar = container.closest('[role="toolbar"]');
+    if (toolbar) {
+      console.log('Attempting to position at toolbar start');
+      toolbar.insertBefore(button, toolbar.firstChild);
+      return;
+    }
+    
+    // 3. フォールバック: コンテナの先頭に配置
+    console.log('Fallback: positioning at container start');
+    container.insertBefore(button, container.firstChild);
+  }
+  
+  /**
+   * 水平方向のボタン再配置
+   */
+  private repositionButtonHorizontally(button: HTMLElement, container: HTMLElement): void {
     const rect = button.getBoundingClientRect();
-    console.log('Gmail toolbar button injected');
-    console.log(`Button position: x=${rect.x}, y=${rect.y}, width=${rect.width}, height=${rect.height}`);
-    console.log(`Button visible: ${rect.width > 0 && rect.height > 0}`);
-    console.log(`Container class: ${container.className}`);
-    console.log(`Container parent: ${container.parentElement?.tagName}.${container.parentElement?.className}`);
+    const screenWidth = window.innerWidth;
+    
+    if (rect.right > screenWidth) {
+      // 右端を超えている場合、左側に移動
+      const toolbar = container.closest('[role="toolbar"]');
+      if (toolbar) {
+        // ツールバーの最初の子要素として配置
+        toolbar.insertBefore(button, toolbar.firstChild);
+        console.log('Repositioned button to toolbar start');
+      } else {
+        // コンテナの先頭に配置
+        container.insertBefore(button, container.firstChild);
+        console.log('Repositioned button to container start');
+      }
+    }
   }
 
   /**
@@ -341,12 +411,45 @@ class ContentScriptManager {
     const button = document.createElement('button');
     button.id = buttonId;
     button.className = 'gemini-reply-button';
-    button.innerHTML = '🤖 AI返信生成';
+    
+    // Google Chatの場合はより目立つスタイル
+    if (this.strategy?.getServiceName() === 'google-chat') {
+      button.innerHTML = '🤖 AI返信';
+      button.style.cssText = `
+        background: linear-gradient(135deg, #4285f4, #34a853) !important;
+        color: white !important;
+        border: 2px solid #1a73e8 !important;
+        border-radius: 6px !important;
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        z-index: 9999 !important;
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3) !important;
+        min-width: 100px !important;
+        margin: 4px !important;
+      `;
+    } else {
+      button.innerHTML = '🤖 AI返信生成';
+    }
     
     button.addEventListener('click', () => this.handleButtonClick());
     
     container.appendChild(button);
-    console.log('Standard button injected');
+    console.log(`Standard button injected for ${this.strategy?.getServiceName()}`);
+    
+    // Google Chatの場合は追加の確認
+    if (this.strategy?.getServiceName() === 'google-chat') {
+      setTimeout(() => {
+        const rect = button.getBoundingClientRect();
+        console.log(`Google Chat button position: x=${rect.x}, y=${rect.y}, width=${rect.width}, height=${rect.height}`);
+        console.log(`Button visible: ${rect.width > 0 && rect.height > 0}`);
+      }, 100);
+    }
   }
 
   /**
@@ -363,12 +466,235 @@ class ContentScriptManager {
     );
   }
 
+  /**
+   * Google Chat用：絶対確実な緊急注入を実行
+   */
+  private executeEmergencyInjection(): boolean {
+    console.log('🚨 === EXECUTING EMERGENCY INJECTION ===');
+    
+    // 戦略1: 実際のチャット入力エリアを探す（複数パターン）
+    const chatInputSelectors = [
+      'input[placeholder*="履歴がオンになっています"]',
+      'input[placeholder*="History is on"]',
+      'input[placeholder*="履歴がオン"]',
+      'input[placeholder*="メッセージ"]',
+      'input[placeholder*="Message"]',
+      'input[aria-label*="メッセージ"]',
+      'input[aria-label*="Message"]',
+      'input[type="text"]:not([class*="search"]):not([class*="gb_"])'
+    ];
+    
+    for (const selector of chatInputSelectors) {
+      const chatInput = document.querySelector(selector) as HTMLElement;
+      if (chatInput) {
+        console.log(`🎯 Found chat input with selector: ${selector}`);
+        
+        // 戦略A: 入力エリアの直接隣に配置
+        const directContainer = this.createDirectContainer(chatInput);
+        if (directContainer) {
+          console.log('🚨 Direct container created, injecting button...');
+          this.injectReplyButton(directContainer);
+          
+          // 成功確認
+          const button = directContainer.querySelector('.gemini-reply-button');
+          if (button && this.isElementVisible(button as HTMLElement)) {
+            console.log('✅ Emergency injection SUCCESS - button visible!');
+            return true;
+          }
+        }
+        
+        // 戦略B: 入力エリアの親コンテナに配置
+        const parentContainer = this.createParentContainer(chatInput);
+        if (parentContainer) {
+          console.log('🚨 Parent container created, injecting button...');
+          this.injectReplyButton(parentContainer);
+          
+          // 成功確認
+          const button = parentContainer.querySelector('.gemini-reply-button');
+          if (button && this.isElementVisible(button as HTMLElement)) {
+            console.log('✅ Emergency injection SUCCESS - button visible!');
+            return true;
+          }
+        }
+      }
+    }
+    
+    // 戦略2: フローティングボタンを作成（最終手段）
+    console.log('🚨 Creating floating emergency button...');
+    const floatingContainer = this.createFloatingContainer();
+    if (floatingContainer) {
+      this.injectReplyButton(floatingContainer);
+      
+      // 成功確認
+      const button = floatingContainer.querySelector('.gemini-reply-button');
+      if (button && this.isElementVisible(button as HTMLElement)) {
+        console.log('✅ Emergency floating injection SUCCESS!');
+        return true;
+      }
+    }
+    
+    console.log('🚨 All emergency injection strategies FAILED');
+    return false;
+  }
+  
+  /**
+   * 入力エリアの直接隣にコンテナを作成
+   */
+  private createDirectContainer(chatInput: HTMLElement): HTMLElement | null {
+    try {
+      const container = document.createElement('div');
+      container.id = 'emergency-ai-button-container-direct';
+      container.style.cssText = `
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-left: 8px !important;
+        position: relative !important;
+        z-index: 9999 !important;
+        background: rgba(255,255,255,0.9) !important;
+        border-radius: 4px !important;
+        padding: 2px !important;
+      `;
+      
+      const parent = chatInput.parentElement;
+      if (parent) {
+        // 入力エリアの後に挿入
+        if (chatInput.nextSibling) {
+          parent.insertBefore(container, chatInput.nextSibling);
+        } else {
+          parent.appendChild(container);
+        }
+        
+        console.log('✅ Direct container created successfully');
+        return container;
+      }
+    } catch (error) {
+      console.error('🚨 Failed to create direct container:', error);
+    }
+    return null;
+  }
+  
+  /**
+   * 入力エリアの親コンテナに配置
+   */
+  private createParentContainer(chatInput: HTMLElement): HTMLElement | null {
+    try {
+      const container = document.createElement('div');
+      container.id = 'emergency-ai-button-container-parent';
+      container.style.cssText = `
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin: 8px 0 !important;
+        position: relative !important;
+        z-index: 9999 !important;
+        background: rgba(16, 185, 129, 0.1) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        border-radius: 4px !important;
+        padding: 8px !important;
+      `;
+      
+      // 入力エリアの親の親に配置
+      let targetParent = chatInput.parentElement;
+      if (targetParent) {
+        // より上位の親を探す
+        let grandParent = targetParent.parentElement;
+        if (grandParent) {
+          grandParent.appendChild(container);
+          console.log('✅ Parent container created successfully');
+          return container;
+        }
+      }
+    } catch (error) {
+      console.error('🚨 Failed to create parent container:', error);
+    }
+    return null;
+  }
+  
+  /**
+   * フローティングコンテナを作成
+   */
+  private createFloatingContainer(): HTMLElement | null {
+    try {
+      // 既存のフローティングコンテナを削除
+      const existing = document.getElementById('floating-ai-button-container-google-chat');
+      if (existing) {
+        existing.remove();
+      }
+      
+      const container = document.createElement('div');
+      container.id = 'floating-ai-button-container-google-chat';
+      container.style.cssText = `
+        position: fixed !important;
+        bottom: 100px !important;
+        right: 20px !important;
+        z-index: 999999 !important;
+        background: linear-gradient(135deg, #10B981, #059669) !important;
+        border: 2px solid #047857 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
+        backdrop-filter: blur(10px) !important;
+        min-width: 150px !important;
+      `;
+      
+      // ラベルを追加
+      const label = document.createElement('div');
+      label.textContent = '🤖 AI返信ツール';
+      label.style.cssText = `
+        font-size: 12px !important;
+        color: white !important;
+        margin-bottom: 8px !important;
+        text-align: center !important;
+        font-weight: 500 !important;
+      `;
+      container.appendChild(label);
+      
+      document.body.appendChild(container);
+      
+      console.log('✅ Floating container created successfully');
+      return container;
+    } catch (error) {
+      console.error('🚨 Failed to create floating container:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * 要素が実際に表示されているかチェック
+   */
+  private isElementVisible(element: HTMLElement): boolean {
+    try {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      
+      const isVisible = rect.width > 0 && 
+                       rect.height > 0 && 
+                       style.display !== 'none' && 
+                       style.visibility !== 'hidden' && 
+                       style.opacity !== '0';
+      
+      console.log(`🔍 Element visibility check: ${isVisible}`);
+      console.log(`   Size: ${rect.width}x${rect.height}`);
+      console.log(`   Style: display=${style.display}, visibility=${style.visibility}, opacity=${style.opacity}`);
+      
+      return isVisible;
+    } catch (error) {
+      console.error('🚨 Error checking element visibility:', error);
+      return false;
+    }
+  }
+
   private async handleButtonClick(): Promise<void> {
     try {
       // APIキーを取得
+      console.log('🔑 Retrieving API key...');
       const apiKey = await this.getApiKey();
+      console.log('🔑 API key status:', apiKey ? 'Found' : 'Not found');
+      
       if (!apiKey) {
-        alert('Gemini APIキーが設定されていません。拡張機能のポップアップから設定してください。');
+        console.error('❌ No API key found in storage');
+        alert('Gemini APIキーが設定されていません。\n\n拡張機能のポップアップを開いて「設定」タブからGemini APIキーを入力してください。\n\nAPIキーの取得方法:\n1. https://aistudio.google.com/app/apikey にアクセス\n2. 「Create API Key」をクリック\n3. 生成されたキーをコピーして設定に貼り付け');
         return;
       }
 
@@ -390,7 +716,14 @@ class ContentScriptManager {
   private async getApiKey(): Promise<string | null> {
     return new Promise((resolve) => {
       chrome.storage.local.get('settings.apiKey', (result) => {
-        resolve(result['settings.apiKey'] || null);
+        if (chrome.runtime.lastError) {
+          console.error('Chrome storage error:', chrome.runtime.lastError);
+          resolve(null);
+        } else {
+          const apiKey = result['settings.apiKey'];
+          console.log('Retrieved API key:', apiKey ? '***set***' : 'null');
+          resolve(apiKey || null);
+        }
       });
     });
   }
@@ -447,15 +780,98 @@ class ContentScriptManager {
       button.disabled = true;
       textarea.value = 'AI返信を生成中...';
 
-      // Use shared GeminiAPIClient for consistent error handling
-      const { GeminiAPIClient } = await import('../shared/api/GeminiAPIClient');
-      const { MessageConverter } = await import('../shared/types');
+      // iframe内でのCORS問題を回避するため、Background Scriptを経由してAPI呼び出し
+      console.log('🔧 Using background script for API call to avoid CORS issues');
       
-      const geminiMessages = MessageConverter.convertToGeminiMessages(messages);
-      const config = { apiKey };
+      const { MessageConverter } = await import('../shared/types/index');
+      const geminiMessages = MessageConverter.serviceArrayToGemini(messages);
       
-      const generatedText = await GeminiAPIClient.generateReply(geminiMessages, config);
-      textarea.value = generatedText;
+      // Background Scriptにメッセージを送信してAPI呼び出しを依頼
+      console.log('🚀 Sending message to background script...');
+      console.log('Frame info:', {
+        isTop: window.self === window.top,
+        url: window.location.href,
+        origin: window.location.origin
+      });
+      
+      const response = await new Promise<{success: boolean, text?: string, error?: string}>((resolve) => {
+        const startTime = Date.now();
+        
+        const messagePayload = {
+          type: 'GENERATE_REPLY',
+          messages: geminiMessages,
+          apiKey: apiKey,
+          timestamp: Date.now()
+        };
+        
+        console.log('📤 Message payload:', messagePayload);
+        
+        try {
+          chrome.runtime.sendMessage(messagePayload, (response) => {
+            const elapsed = Date.now() - startTime;
+            console.log(`📥 Response received after ${elapsed}ms:`, response);
+            
+            if (chrome.runtime.lastError) {
+              console.error('❌ Background script communication error:', chrome.runtime.lastError);
+              resolve({
+                success: false,
+                error: `Background scriptとの通信に失敗しました: ${chrome.runtime.lastError.message}`
+              });
+            } else if (!response) {
+              console.error('❌ No response from background script');
+              resolve({
+                success: false,
+                error: 'Background scriptからレスポンスがありません'
+              });
+            } else {
+              console.log('✅ Valid response from background script');
+              resolve(response);
+            }
+          });
+        } catch (sendError) {
+          console.error('❌ Error sending message to background script:', sendError);
+          resolve({
+            success: false,
+            error: `メッセージ送信エラー: ${sendError.message}`
+          });
+        }
+        
+        // タイムアウト処理
+        setTimeout(() => {
+          console.error('⏰ Background script communication timeout');
+          resolve({
+            success: false,
+            error: 'Background scriptとの通信がタイムアウトしました'
+          });
+        }, 30000); // 30秒タイムアウト
+      });
+      
+      if (response.success && response.text) {
+        console.log('✅ Successfully received generated text');
+        textarea.value = response.text;
+      } else {
+        console.error('❌ API generation failed:', response.error);
+        
+        // iframe通信が失敗した場合のフォールバック（デバッグ用）
+        if (response.error?.includes('Background script') || response.error?.includes('通信')) {
+          console.log('🔄 Attempting direct API call as fallback...');
+          
+          try {
+            // 直接API呼び出しを試行（デバッグ用）
+            const { GeminiAPIClient } = await import('../shared/api/GeminiAPIClient');
+            const config = { apiKey };
+            const fallbackText = await GeminiAPIClient.generateReply(geminiMessages, config);
+            
+            console.log('✅ Direct API call succeeded');
+            textarea.value = fallbackText;
+            return;
+          } catch (fallbackError) {
+            console.error('❌ Direct API call also failed:', fallbackError);
+          }
+        }
+        
+        throw new Error(response.error || 'Unknown error occurred');
+      }
     } catch (error) {
       console.error('Error generating reply:', error);
       textarea.value = 'AI返信の生成でエラーが発生しました。APIキーを確認してください。';
@@ -466,6 +882,13 @@ class ContentScriptManager {
   }
 
   private scheduleRetry(): void {
+    // Google Chatのホーム画面では無限リトライを停止
+    if (this.strategy?.getServiceName() === 'google-chat' && window.location.hash.includes('#chat/home')) {
+      console.log('Google Chat: On home page, stopping retries until page changes');
+      this.retryCount = this.MAX_RETRIES; // リトライを停止
+      return;
+    }
+    
     if (this.retryCount < this.MAX_RETRIES) {
       this.retryCount++;
       console.log(`Scheduling retry ${this.retryCount}/${this.MAX_RETRIES} in ${this.RETRY_DELAY}ms`);
@@ -597,7 +1020,18 @@ class ContentScriptManager {
         }
       }
       
+      // リトライカウントをリセット
       this.retryCount = 0;
+      
+      // Google Chatの場合、ホーム画面から実際のチャットに移動した可能性をチェック
+      if (this.strategy?.getServiceName() === 'google-chat') {
+        if (window.location.hash.includes('#chat/home')) {
+          console.log('Google Chat: Still on home page after URL change');
+          return; // ホーム画面では処理しない
+        } else {
+          console.log('Google Chat: Moved to actual chat conversation, attempting button injection');
+        }
+      }
       
       setTimeout(() => {
         this.checkAndInjectButton();
@@ -638,6 +1072,61 @@ class ContentScriptManager {
     
     // Unregister memory cleanup
     memoryManager.unregisterCleanupTask('content-script');
+  }
+
+  /**
+   * フレームの深さを取得
+   */
+  private getFrameDepth(): number {
+    let depth = 0;
+    let currentWindow = window;
+    
+    try {
+      while (currentWindow !== currentWindow.parent) {
+        depth++;
+        currentWindow = currentWindow.parent;
+        
+        // 無限ループ防止
+        if (depth > 10) break;
+      }
+    } catch (error) {
+      // クロスオリジンエラーの場合
+      console.log('Cross-origin frame access blocked');
+    }
+    
+    return depth;
+  }
+
+  /**
+   * Google Chat iframe用の特別セットアップ
+   */
+  private setupGoogleChatIframeMode(): void {
+    console.log('🚀 Setting up Google Chat iframe mode...');
+    
+    // iframe内でより頻繁にチェック
+    this.MAX_RETRIES = 10;
+    this.RETRY_DELAY = 500;
+    
+    // iframe readyイベントを待つ
+    if (document.readyState !== 'complete') {
+      window.addEventListener('load', () => {
+        console.log('🎯 Google Chat iframe loaded, attempting injection...');
+        setTimeout(() => this.checkAndInjectButton(), 1000);
+      });
+    }
+    
+    // 追加のDOM変更監視
+    const iframeObserver = new MutationObserver(() => {
+      console.log('🔄 Google Chat iframe DOM changed');
+      this.debounceCheck();
+    });
+    
+    iframeObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
   }
 
   private registerMemoryCleanup(): void {

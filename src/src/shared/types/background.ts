@@ -10,7 +10,8 @@ export type BackgroundMessageType =
   | 'GET_CACHED_CONTEXT'
   | 'SET_CACHED_CONTEXT'
   | 'CLEAR_CACHE'
-  | 'GET_STORAGE_INFO';
+  | 'GET_STORAGE_INFO'
+  | 'GENERATE_REPLY';
 
 export interface BaseBackgroundMessage {
   type: BackgroundMessageType;
@@ -47,13 +48,20 @@ export interface GetStorageInfoMessage extends BaseBackgroundMessage {
   type: 'GET_STORAGE_INFO';
 }
 
+export interface GenerateReplyMessage extends BaseBackgroundMessage {
+  type: 'GENERATE_REPLY';
+  messages: any[];
+  apiKey: string;
+}
+
 export type BackgroundMessage = 
   | GetApiKeyMessage
   | SetApiKeyMessage
   | GetCachedContextMessage
   | SetCachedContextMessage
   | ClearCacheMessage
-  | GetStorageInfoMessage;
+  | GetStorageInfoMessage
+  | GenerateReplyMessage;
 
 // === Background Response Types ===
 
@@ -79,11 +87,16 @@ export interface StorageInfoResponse extends BaseBackgroundResponse {
   };
 }
 
+export interface GenerateReplyResponse extends BaseBackgroundResponse {
+  text?: string;
+}
+
 export type BackgroundResponse = 
   | BaseBackgroundResponse
   | ApiKeyResponse
   | CachedContextResponse
-  | StorageInfoResponse;
+  | StorageInfoResponse
+  | GenerateReplyResponse;
 
 // === Runtime Types ===
 
@@ -138,6 +151,10 @@ export function isClearCacheMessage(msg: BackgroundMessage): msg is ClearCacheMe
 
 export function isGetStorageInfoMessage(msg: BackgroundMessage): msg is GetStorageInfoMessage {
   return msg.type === 'GET_STORAGE_INFO';
+}
+
+export function isGenerateReplyMessage(msg: BackgroundMessage): msg is GenerateReplyMessage {
+  return msg.type === 'GENERATE_REPLY';
 }
 
 // === Error Handling ===

@@ -14,6 +14,7 @@ import {
   isSetCachedContextMessage,
   isClearCacheMessage,
   isGetStorageInfoMessage,
+  isGenerateReplyMessage,
   createBackgroundError
 } from '../shared/types/background';
 
@@ -104,8 +105,19 @@ class BackgroundManager {
         await this.handleClearCache(sendResponse);
       } else if (isGetStorageInfoMessage(message)) {
         await this.handleGetStorageInfo(sendResponse);
+      } else if (isGenerateReplyMessage(message)) {
+        // Generate reply メッセージの処理を分離してより詳細にログ
+        try {
+          await this.handleGenerateReply(message, sendResponse);
+        } catch (error) {
+          console.error('Fatal error in handleGenerateReply:', error);
+          sendResponse({
+            success: false,
+            error: `致命的エラー: ${error instanceof Error ? error.message : String(error)}`
+          });
+        }
       } else {
-        console.warn('Unknown message type:', message.type);
+        console.warn('Unknown message type:', message.type || (message as any).action);
         sendResponse({ 
           success: false, 
           error: 'Unknown message type',
@@ -233,6 +245,84 @@ class BackgroundManager {
         error: 'Failed to get storage info',
         timestamp: Date.now()
       });
+    }
+  }
+
+  private async handleGenerateReply(message: any, sendResponse: ChromeRuntimeSendResponse): Promise<void> {
+    try {
+      console.log('🚀 Background script: Handling generateReply request');
+      console.log('📥 Received message:', {
+        action: message.action,
+        hasMessages: !!message.messages,
+        messagesCount: message.messages?.length || 0,
+        hasApiKey: !!message.apiKey,
+        apiKeyLength: message.apiKey?.length || 0
+      });
+      
+      const { messages, apiKey } = message;
+      
+      if (!apiKey) {
+        console.error('❌ No API key provided');
+        sendResponse({
+          success: false,
+          error: 'APIキーが設定されていません'
+        });
+        return;
+      }
+
+      if (!messages || messages.length === 0) {
+        console.error('❌ No messages provided');
+        sendResponse({
+          success: false,
+          error: '会話履歴が見つかりません'
+        });
+        return;
+      }
+
+      console.log('📝 Messages to be sent to Gemini:', messages);
+
+      // GeminiAPIClientを使用してAPI呼び出し（日本語対応版）
+      const { GeminiAPIClient } = await import('../shared/api/GeminiAPIClient');
+      const config = { apiKey };
+      
+      console.log('🔧 Calling Gemini API with Japanese context...');
+      const startTime = Date.now();
+      
+      // ServiceMessage形式に変換してから日本語プロンプトを適用
+      const serviceMessages = messages.map(msg => ({
+        author: msg.role === 'user' ? 'ユーザー' : 'アシスタント',
+        text: msg.content
+      }));
+      
+      const generatedText = await GeminiAPIClient.generateContextualReply(serviceMessages, config);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Gemini API response received after ${elapsed}ms`);
+      console.log('📄 Generated text length:', generatedText.length);
+      
+      const responseData = {
+        success: true,
+        text: generatedText
+      };
+      
+      console.log('📤 Sending response back to content script:', responseData);
+      sendResponse(responseData);
+      
+    } catch (error) {
+      console.error('❌ Background script error generating reply:', error);
+      console.error('❌ Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      const errorResponse = {
+        success: false,
+        error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+      };
+      
+      console.log('📤 Sending error response:', errorResponse);
+      sendResponse(errorResponse);
     }
   }
 

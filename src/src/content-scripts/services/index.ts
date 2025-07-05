@@ -1,15 +1,24 @@
 export type { ServiceStrategy, Message } from './interface';
 export { GmailStrategy } from './gmail';
 export { ChatworkStrategy } from './chatwork';
-export { GoogleChatStrategy } from './google-chat';
+export { GoogleChatSimpleStrategy } from './google-chat-simple';
 
 import type { ServiceStrategy } from './interface';
 import { GmailStrategy } from './gmail';
 import { ChatworkStrategy } from './chatwork';
-import { GoogleChatStrategy } from './google-chat';
+import { GoogleChatSimpleStrategy } from './google-chat-simple';
 
 export function createServiceStrategy(url: string): ServiceStrategy | null {
-  const hostname = new URL(url).hostname;
+  const urlObj = new URL(url);
+  const hostname = urlObj.hostname;
+  const pathname = urlObj.pathname;
+  const hash = urlObj.hash;
+  
+  // Google ChatはGmailに統合されているため、URLとハッシュで判定
+  if (hostname === 'mail.google.com' && (pathname.includes('/chat') || hash.includes('chat'))) {
+    console.log('Detected Google Chat within Gmail domain');
+    return new GoogleChatSimpleStrategy();
+  }
   
   switch (hostname) {
     case 'mail.google.com':
@@ -20,7 +29,7 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
       return new ChatworkStrategy();
     
     case 'chat.google.com':
-      return new GoogleChatStrategy();
+      return new GoogleChatSimpleStrategy();
     
     default:
       console.warn(`Unsupported service: ${hostname}`);

@@ -198,11 +198,18 @@ export class GeminiAPIClient {
   }
 
   private static buildConversationPrompt(conversationText: string): string {
-    return `以下の会話に対して、適切で自然な返信を日本語で生成してください。簡潔で礼儀正しく、文脈に沿った内容にしてください。
+    return `以下の会話に対して、適切で自然な返信を日本語で生成してください。
 
+【重要な指示】
+- 必ず日本語で回答してください
+- 簡潔で礼儀正しく、文脈に沿った内容にしてください
+- ビジネスシーンに適した丁寧な敬語を使用してください
+- 相手の質問や依頼に具体的に答えてください
+
+【会話内容】
 ${conversationText}
 
-返信:`;
+【日本語での返信】:`;
   }
 
   private static handleError(error: unknown) {
