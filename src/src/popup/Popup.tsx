@@ -1,5 +1,7 @@
-import React from 'react';
-import { SettingsForm } from '../components/features';
+import React, { lazy, Suspense } from 'react';
+
+// Lazy load the SettingsForm to reduce initial bundle size
+const SettingsForm = lazy(() => import('../components/features/SettingsForm').then(module => ({ default: module.SettingsForm })));
 
 export const Popup: React.FC = () => {
   return (
@@ -18,7 +20,14 @@ export const Popup: React.FC = () => {
 
         {/* メインコンテンツ */}
         <div className="p-4">
-          <SettingsForm />
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+            </div>
+          }>
+            <SettingsForm />
+          </Suspense>
         </div>
 
         {/* フッター */}

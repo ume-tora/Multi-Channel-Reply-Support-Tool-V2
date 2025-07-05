@@ -1,4 +1,21 @@
 import { StorageService } from '../services/storageService';
+import type { 
+  BackgroundMessage, 
+  BackgroundResponse, 
+  ChromeRuntimeSender, 
+  ChromeRuntimeSendResponse,
+  InstallationDetails
+} from '../shared/types/background';
+import {
+  isBackgroundMessage,
+  isGetApiKeyMessage,
+  isSetApiKeyMessage,
+  isGetCachedContextMessage,
+  isSetCachedContextMessage,
+  isClearCacheMessage,
+  isGetStorageInfoMessage,
+  createBackgroundError
+} from '../shared/types/background';
 
 class BackgroundManager {
   constructor() {
@@ -9,7 +26,7 @@ class BackgroundManager {
     console.log('Multi Channel Reply Support Tool: Background script initialized');
 
     // インストール時の処理
-    chrome.runtime.onInstalled.addListener((details) => {
+    chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
       this.handleInstalled(details);
     });
 
@@ -19,7 +36,11 @@ class BackgroundManager {
     });
 
     // メッセージ受信の処理
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((
+      message: unknown, 
+      sender: ChromeRuntimeSender, 
+      sendResponse: ChromeRuntimeSendResponse
+    ) => {
       this.handleMessage(message, sender, sendResponse);
       return true; // 非同期レスポンスを許可
     });
@@ -54,104 +75,145 @@ class BackgroundManager {
   }
 
   private async handleMessage(
-    message: any,
-    _sender: chrome.runtime.MessageSender,
-    sendResponse: (response: any) => void
+    message: unknown,
+    _sender: ChromeRuntimeSender,
+    sendResponse: ChromeRuntimeSendResponse
   ): Promise<void> {
     try {
-      switch (message.type) {
-        case 'GET_API_KEY':
-          await this.handleGetApiKey(sendResponse);
-          break;
+      // Validate message structure
+      if (!isBackgroundMessage(message)) {
+        console.warn('Invalid message format:', message);
+        sendResponse({ 
+          success: false, 
+          error: 'Invalid message format',
+          timestamp: Date.now()
+        });
+        return;
+      }
 
-        case 'SET_API_KEY':
-          await this.handleSetApiKey(message.apiKey, sendResponse);
-          break;
-
-        case 'GET_CACHED_CONTEXT':
-          await this.handleGetCachedContext(message.channel, message.threadId, sendResponse);
-          break;
-
-        case 'SET_CACHED_CONTEXT':
-          await this.handleSetCachedContext(message.channel, message.threadId, message.context, sendResponse);
-          break;
-
-        case 'CLEAR_CACHE':
-          await this.handleClearCache(sendResponse);
-          break;
-
-        case 'GET_STORAGE_INFO':
-          await this.handleGetStorageInfo(sendResponse);
-          break;
-
-        default:
-          console.warn('Unknown message type:', message.type);
-          sendResponse({ success: false, error: 'Unknown message type' });
+      // Handle different message types with type safety
+      if (isGetApiKeyMessage(message)) {
+        await this.handleGetApiKey(sendResponse);
+      } else if (isSetApiKeyMessage(message)) {
+        await this.handleSetApiKey(message.apiKey, sendResponse);
+      } else if (isGetCachedContextMessage(message)) {
+        await this.handleGetCachedContext(message.channel, message.threadId, sendResponse);
+      } else if (isSetCachedContextMessage(message)) {
+        await this.handleSetCachedContext(message.channel, message.threadId, message.context, sendResponse);
+      } else if (isClearCacheMessage(message)) {
+        await this.handleClearCache(sendResponse);
+      } else if (isGetStorageInfoMessage(message)) {
+        await this.handleGetStorageInfo(sendResponse);
+      } else {
+        console.warn('Unknown message type:', message.type);
+        sendResponse({ 
+          success: false, 
+          error: 'Unknown message type',
+          timestamp: Date.now()
+        });
       }
     } catch (error) {
       console.error('Error handling message:', error);
       sendResponse({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: Date.now()
       });
     }
   }
 
-  private async handleGetApiKey(sendResponse: (response: any) => void): Promise<void> {
+  private async handleGetApiKey(sendResponse: ChromeRuntimeSendResponse): Promise<void> {
     try {
       const apiKey = await StorageService.getApiKey();
-      sendResponse({ success: true, apiKey });
+      sendResponse({ 
+        success: true, 
+        apiKey,
+        timestamp: Date.now()
+      });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to get API key' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to get API key',
+        timestamp: Date.now()
+      });
     }
   }
 
-  private async handleSetApiKey(apiKey: string, sendResponse: (response: any) => void): Promise<void> {
+  private async handleSetApiKey(apiKey: string, sendResponse: ChromeRuntimeSendResponse): Promise<void> {
     try {
       await StorageService.setApiKey(apiKey);
-      sendResponse({ success: true });
+      sendResponse({ 
+        success: true,
+        timestamp: Date.now()
+      });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to set API key' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to set API key',
+        timestamp: Date.now()
+      });
     }
   }
 
   private async handleGetCachedContext(
     channel: string,
     threadId: string,
-    sendResponse: (response: any) => void
+    sendResponse: ChromeRuntimeSendResponse
   ): Promise<void> {
     try {
       const context = await StorageService.getCachedContext(channel, threadId);
-      sendResponse({ success: true, context });
+      sendResponse({ 
+        success: true, 
+        context,
+        timestamp: Date.now()
+      });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to get cached context' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to get cached context',
+        timestamp: Date.now()
+      });
     }
   }
 
   private async handleSetCachedContext(
     channel: string,
     threadId: string,
-    context: any,
-    sendResponse: (response: any) => void
+    context: unknown,
+    sendResponse: ChromeRuntimeSendResponse
   ): Promise<void> {
     try {
       await StorageService.setCachedContext(channel, threadId, context);
-      sendResponse({ success: true });
+      sendResponse({ 
+        success: true,
+        timestamp: Date.now()
+      });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to set cached context' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to set cached context',
+        timestamp: Date.now()
+      });
     }
   }
 
-  private async handleClearCache(sendResponse: (response: any) => void): Promise<void> {
+  private async handleClearCache(sendResponse: ChromeRuntimeSendResponse): Promise<void> {
     try {
       await StorageService.clearExpiredCache();
-      sendResponse({ success: true });
+      sendResponse({ 
+        success: true,
+        timestamp: Date.now()
+      });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to clear cache' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to clear cache',
+        timestamp: Date.now()
+      });
     }
   }
 
-  private async handleGetStorageInfo(sendResponse: (response: any) => void): Promise<void> {
+  private async handleGetStorageInfo(sendResponse: ChromeRuntimeSendResponse): Promise<void> {
     try {
       const usage = await StorageService.getStorageUsage();
       const apiKey = await StorageService.getApiKey();
@@ -162,10 +224,15 @@ class BackgroundManager {
           storageUsage: usage,
           hasApiKey: !!apiKey,
           maxStorage: chrome.storage.local.QUOTA_BYTES || 5242880, // 5MB
-        }
+        },
+        timestamp: Date.now()
       });
     } catch (error) {
-      sendResponse({ success: false, error: 'Failed to get storage info' });
+      sendResponse({ 
+        success: false, 
+        error: 'Failed to get storage info',
+        timestamp: Date.now()
+      });
     }
   }
 

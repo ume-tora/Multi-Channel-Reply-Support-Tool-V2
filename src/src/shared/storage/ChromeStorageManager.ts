@@ -1,0 +1,277 @@
+/**
+ * Centralized Chrome Storage API manager with consistent error handling and type safety
+ */
+
+export type StorageKey = 'settings.apiKey' | 'settings.userSettings' | string;
+
+export interface StorageItem<T = unknown> {
+  value: T;
+  expiresAt?: number;
+}
+
+export interface CacheOptions {
+  ttl?: number; // Time to live in milliseconds
+}
+
+export class ChromeStorageManager {
+  private static readonly DEFAULT_TTL = 60 * 60 * 1000; // 1 hour
+  private static readonly CACHE_PREFIX = 'cache';
+
+  /**
+   * Get a value from Chrome storage
+   */
+  static async get<T = unknown>(key: StorageKey): Promise<T | null> {
+    try {
+      const result = await chrome.storage.local.get(key);
+      return result[key] || null;
+    } catch (error) {
+      console.error(`ChromeStorageManager: Error getting key "${key}":`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Set a value in Chrome storage
+   */
+  static async set<T = unknown>(key: StorageKey, value: T): Promise<void> {
+    try {
+      await chrome.storage.local.set({ [key]: value });
+    } catch (error) {
+      console.error(`ChromeStorageManager: Error setting key "${key}":`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get multiple values from Chrome storage
+   */
+  static async getMultiple<T extends Record<string, any>>(keys: StorageKey[]): Promise<Partial<T>> {
+    try {
+      const result = await chrome.storage.local.get(keys);
+      return result as Partial<T>;
+    } catch (error) {
+      console.error('ChromeStorageManager: Error getting multiple keys:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Set multiple values in Chrome storage
+   */
+  static async setMultiple<T extends Record<string, any>>(items: T): Promise<void> {
+    try {
+      await chrome.storage.local.set(items);
+    } catch (error) {
+      console.error('ChromeStorageManager: Error setting multiple items:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a key from Chrome storage
+   */
+  static async remove(key: StorageKey): Promise<void> {
+    try {
+      await chrome.storage.local.remove(key);
+    } catch (error) {
+      console.error(`ChromeStorageManager: Error removing key "${key}":`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all data from Chrome storage
+   */
+  static async clear(): Promise<void> {
+    try {
+      await chrome.storage.local.clear();
+    } catch (error) {
+      console.error('ChromeStorageManager: Error clearing storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get storage usage information
+   */
+  static async getUsage(): Promise<{ used: number; total: number; percentage: number }> {
+    try {
+      const used = await chrome.storage.local.getBytesInUse();
+      const total = chrome.storage.local.QUOTA_BYTES || 5242880; // 5MB default
+      return {
+        used,
+        total,
+        percentage: (used / total) * 100
+      };
+    } catch (error) {
+      console.error('ChromeStorageManager: Error getting storage usage:', error);
+      return { used: 0, total: 0, percentage: 0 };
+    }
+  }
+
+  // === Cached Storage Methods ===
+
+  /**
+   * Get a cached value with automatic expiration
+   */
+  static async getCached<T = unknown>(
+    channel: string, 
+    threadId: string
+  ): Promise<T | null> {
+    try {
+      const cacheKey = `${this.CACHE_PREFIX}_${channel}_${threadId}`;
+      const cached = await this.get<StorageItem<T>>(cacheKey);
+      
+      if (!cached) {
+        return null;
+      }
+
+      // Check expiration
+      if (cached.expiresAt && Date.now() > cached.expiresAt) {
+        await this.remove(cacheKey);
+        return null;
+      }
+
+      return cached.value;
+    } catch (error) {
+      console.error('ChromeStorageManager: Error getting cached value:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set a cached value with TTL
+   */
+  static async setCached<T = unknown>(
+    channel: string, 
+    threadId: string, 
+    value: T, 
+    options: CacheOptions = {}
+  ): Promise<void> {
+    try {
+      const cacheKey = `${this.CACHE_PREFIX}_${channel}_${threadId}`;
+      const ttl = options.ttl || this.DEFAULT_TTL;
+      
+      const cacheItem: StorageItem<T> = {
+        value,
+        expiresAt: Date.now() + ttl
+      };
+
+      await this.set(cacheKey, cacheItem);
+    } catch (error) {
+      console.error('ChromeStorageManager: Error setting cached value:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  static async clearExpiredCache(): Promise<number> {
+    try {
+      const allData = await chrome.storage.local.get();
+      const now = Date.now();
+      const keysToRemove: string[] = [];
+
+      for (const [key, value] of Object.entries(allData)) {
+        if (
+          key.startsWith(this.CACHE_PREFIX) &&
+          value &&
+          typeof value === 'object' &&
+          'expiresAt' in value &&
+          typeof value.expiresAt === 'number' &&
+          value.expiresAt < now
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`ChromeStorageManager: Cleared ${keysToRemove.length} expired cache entries`);
+      }
+
+      return keysToRemove.length;
+    } catch (error) {
+      console.error('ChromeStorageManager: Error clearing expired cache:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Clear all cache entries
+   */
+  static async clearAllCache(): Promise<void> {
+    try {
+      const allData = await chrome.storage.local.get();
+      const cacheKeys = Object.keys(allData).filter(key => key.startsWith(this.CACHE_PREFIX));
+      
+      if (cacheKeys.length > 0) {
+        await chrome.storage.local.remove(cacheKeys);
+        console.log(`ChromeStorageManager: Cleared ${cacheKeys.length} cache entries`);
+      }
+    } catch (error) {
+      console.error('ChromeStorageManager: Error clearing all cache:', error);
+      throw error;
+    }
+  }
+
+  // === Promise-based wrapper for callback-style code ===
+
+  /**
+   * Promise-based get for use in content scripts or callback contexts
+   */
+  static getPromised<T = unknown>(key: StorageKey): Promise<T | null> {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(key, (result) => {
+        if (chrome.runtime.lastError) {
+          console.error(`ChromeStorageManager: Runtime error for key "${key}":`, chrome.runtime.lastError);
+          resolve(null);
+        } else {
+          resolve(result[key] || null);
+        }
+      });
+    });
+  }
+
+  /**
+   * Promise-based set for use in content scripts or callback contexts
+   */
+  static setPromised<T = unknown>(key: StorageKey, value: T): Promise<void> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [key]: value }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(`ChromeStorageManager: Runtime error setting key "${key}":`, chrome.runtime.lastError);
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+}
+
+// === Convenience methods for common operations ===
+
+export class SettingsStorage {
+  static async getApiKey(): Promise<string | null> {
+    return ChromeStorageManager.get<string>('settings.apiKey');
+  }
+
+  static async setApiKey(apiKey: string): Promise<void> {
+    return ChromeStorageManager.set('settings.apiKey', apiKey);
+  }
+
+  static async getUserSettings(): Promise<Record<string, any>> {
+    const settings = await ChromeStorageManager.get<Record<string, any>>('settings.userSettings');
+    return settings || {};
+  }
+
+  static async setUserSettings(settings: Record<string, any>): Promise<void> {
+    return ChromeStorageManager.set('settings.userSettings', settings);
+  }
+
+  static async clearApiKey(): Promise<void> {
+    return ChromeStorageManager.remove('settings.apiKey');
+  }
+}

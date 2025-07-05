@@ -1,33 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
-import { StorageService } from '../services/storageService';
+import { SettingsStorage } from '../shared/storage/ChromeStorageManager';
+import type { UserSettings } from '../shared/types';
 
-interface UseStorageResult {
+interface UseStorageReturn {
   apiKey: string | null;
-  userSettings: any;
+  userSettings: UserSettings;
   isLoading: boolean;
   error: string | null;
   setApiKey: (apiKey: string) => Promise<void>;
-  setUserSettings: (settings: any) => Promise<void>;
+  setUserSettings: (settings: UserSettings) => Promise<void>;
   clearError: () => void;
 }
 
-export const useStorage = (): UseStorageResult => {
+export const useStorage = (): UseStorageReturn => {
   const [apiKey, setApiKeyState] = useState<string | null>(null);
-  const [userSettings, setUserSettingsState] = useState<any>({});
+  const [userSettings, setUserSettingsState] = useState<UserSettings>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load initial data
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [key, settings] = await Promise.all([
-          StorageService.getApiKey(),
-          StorageService.getUserSettings(),
+        
+        // Use centralized storage manager
+        const [loadedApiKey, loadedSettings] = await Promise.all([
+          SettingsStorage.getApiKey(),
+          SettingsStorage.getUserSettings()
         ]);
-        setApiKeyState(key);
-        setUserSettingsState(settings);
+        
+        setApiKeyState(loadedApiKey);
+        setUserSettingsState(loadedSettings);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load settings');
       } finally {
@@ -41,7 +44,7 @@ export const useStorage = (): UseStorageResult => {
   const setApiKey = useCallback(async (newApiKey: string) => {
     try {
       setError(null);
-      await StorageService.setApiKey(newApiKey);
+      await SettingsStorage.setApiKey(newApiKey);
       setApiKeyState(newApiKey);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save API key');
@@ -49,10 +52,10 @@ export const useStorage = (): UseStorageResult => {
     }
   }, []);
 
-  const setUserSettings = useCallback(async (newSettings: any) => {
+  const setUserSettings = useCallback(async (newSettings: UserSettings) => {
     try {
       setError(null);
-      await StorageService.setUserSettings(newSettings);
+      await SettingsStorage.setUserSettings(newSettings);
       setUserSettingsState(newSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');

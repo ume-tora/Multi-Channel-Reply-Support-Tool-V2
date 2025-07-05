@@ -1,0 +1,200 @@
+/**
+ * Memory Manager for Chrome Extension Performance Optimization
+ */
+
+export interface MemoryStats {
+  used: number;
+  total: number;
+  percentage: number;
+  warning: boolean;
+  critical: boolean;
+}
+
+export class MemoryManager {
+  private static instance: MemoryManager;
+  private cleanupTasks: Map<string, () => void> = new Map();
+  private memoryCheckInterval: number | null = null;
+  private readonly MEMORY_WARNING_THRESHOLD = 70; // 70% memory usage
+  private readonly MEMORY_CRITICAL_THRESHOLD = 85; // 85% memory usage
+  private readonly MEMORY_CHECK_INTERVAL = 30000; // 30 seconds
+
+  private constructor() {
+    this.startMemoryMonitoring();
+  }
+
+  static getInstance(): MemoryManager {
+    if (!MemoryManager.instance) {
+      MemoryManager.instance = new MemoryManager();
+    }
+    return MemoryManager.instance;
+  }
+
+  /**
+   * Register a cleanup task
+   */
+  registerCleanupTask(key: string, cleanupFn: () => void): void {
+    this.cleanupTasks.set(key, cleanupFn);
+  }
+
+  /**
+   * Unregister a cleanup task
+   */
+  unregisterCleanupTask(key: string): void {
+    this.cleanupTasks.delete(key);
+  }
+
+  /**
+   * Force garbage collection and cleanup
+   */
+  forceCleanup(): void {
+    console.log('MemoryManager: Forcing cleanup...');
+    
+    // Run all registered cleanup tasks
+    for (const [key, cleanupFn] of this.cleanupTasks) {
+      try {
+        cleanupFn();
+        console.log(`MemoryManager: Cleanup task "${key}" completed`);
+      } catch (error) {
+        console.error(`MemoryManager: Error in cleanup task "${key}":`, error);
+      }
+    }
+
+    // Clear expired cache
+    this.clearExpiredCache();
+    
+    // Force garbage collection if available
+    if (window.gc) {
+      window.gc();
+    }
+  }
+
+  /**
+   * Get memory statistics
+   */
+  async getMemoryStats(): Promise<MemoryStats> {
+    try {
+      // Try to get actual memory usage if available
+      if ('memory' in performance) {
+        const memInfo = (performance as Performance & { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
+        if (!memInfo) {
+          throw new Error('Memory info not available');
+        }
+        const used = memInfo.usedJSHeapSize;
+        const total = memInfo.totalJSHeapSize;
+        const percentage = (used / total) * 100;
+        
+        return {
+          used,
+          total,
+          percentage,
+          warning: percentage > this.MEMORY_WARNING_THRESHOLD,
+          critical: percentage > this.MEMORY_CRITICAL_THRESHOLD
+        };
+      }
+      
+      // Fallback: estimate based on storage usage
+      const storageStats = await this.getStorageStats();
+      const percentage = storageStats.percentage;
+      
+      return {
+        used: storageStats.used,
+        total: storageStats.total,
+        percentage,
+        warning: percentage > this.MEMORY_WARNING_THRESHOLD,
+        critical: percentage > this.MEMORY_CRITICAL_THRESHOLD
+      };
+    } catch (error) {
+      console.error('MemoryManager: Error getting memory stats:', error);
+      return {
+        used: 0,
+        total: 0,
+        percentage: 0,
+        warning: false,
+        critical: false
+      };
+    }
+  }
+
+  /**
+   * Check if memory optimization is needed
+   */
+  async shouldOptimize(): Promise<boolean> {
+    const stats = await this.getMemoryStats();
+    return stats.warning || stats.critical;
+  }
+
+  /**
+   * Start memory monitoring
+   */
+  private startMemoryMonitoring(): void {
+    if (this.memoryCheckInterval) {
+      clearInterval(this.memoryCheckInterval);
+    }
+
+    this.memoryCheckInterval = window.setInterval(async () => {
+      try {
+        const stats = await this.getMemoryStats();
+        
+        if (stats.critical) {
+          console.warn('MemoryManager: Critical memory usage detected, forcing cleanup');
+          this.forceCleanup();
+        } else if (stats.warning) {
+          console.warn('MemoryManager: High memory usage detected');
+          this.clearExpiredCache();
+        }
+      } catch (error) {
+        console.error('MemoryManager: Error in memory monitoring:', error);
+      }
+    }, this.MEMORY_CHECK_INTERVAL);
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  private async clearExpiredCache(): Promise<void> {
+    try {
+      const { ChromeStorageManager } = await import('../storage/ChromeStorageManager');
+      const clearedCount = await ChromeStorageManager.clearExpiredCache();
+      
+      if (clearedCount > 0) {
+        console.log(`MemoryManager: Cleared ${clearedCount} expired cache entries`);
+      }
+    } catch (error) {
+      console.error('MemoryManager: Error clearing expired cache:', error);
+    }
+  }
+
+  /**
+   * Get storage statistics
+   */
+  private async getStorageStats(): Promise<{ used: number; total: number; percentage: number }> {
+    try {
+      const { ChromeStorageManager } = await import('../storage/ChromeStorageManager');
+      return await ChromeStorageManager.getUsage();
+    } catch (error) {
+      console.error('MemoryManager: Error getting storage stats:', error);
+      return { used: 0, total: 0, percentage: 0 };
+    }
+  }
+
+  /**
+   * Stop memory monitoring
+   */
+  stopMonitoring(): void {
+    if (this.memoryCheckInterval) {
+      clearInterval(this.memoryCheckInterval);
+      this.memoryCheckInterval = null;
+    }
+  }
+
+  /**
+   * Cleanup the memory manager itself
+   */
+  destroy(): void {
+    this.stopMonitoring();
+    this.cleanupTasks.clear();
+  }
+}
+
+// Export singleton instance
+export const memoryManager = MemoryManager.getInstance();
