@@ -238,7 +238,72 @@ class ContentScriptManager {
       existingButton.remove();
     }
 
-    // ボタンを作成
+    // Gmailのツールバー統合の場合は特別な処理
+    if (this.strategy && this.strategy.getServiceName() === 'gmail' && this.isGmailToolbarContainer(container)) {
+      this.injectGmailToolbarButton(container, buttonId);
+    } else {
+      // 標準的なボタン挿入
+      this.injectStandardButton(container, buttonId);
+    }
+    
+    console.log('AI reply button injected successfully');
+  }
+
+  /**
+   * Gmailツールバー用のボタン挿入
+   */
+  private injectGmailToolbarButton(container: HTMLElement, buttonId: string): void {
+    // Gmailツールバーのスタイルに合わせたボタンを作成
+    const button = document.createElement('div');
+    button.id = buttonId;
+    button.setAttribute('role', 'button');
+    button.setAttribute('aria-label', 'AI返信生成');
+    button.className = 'gemini-reply-button';
+    button.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 8px;
+      margin: 0 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      transition: all 0.2s ease;
+      z-index: 1000;
+      position: relative;
+    `;
+    
+    // アイコンとテキストを設定
+    button.innerHTML = '<span style="font-size: 14px;">🤖</span>';
+    button.title = 'AI返信生成';
+    
+    // ホバー効果
+    button.addEventListener('mouseenter', () => {
+      button.style.background = 'linear-gradient(135deg, #059669, #047857)';
+      button.style.transform = 'scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      button.style.background = 'linear-gradient(135deg, #10B981, #059669)';
+      button.style.transform = 'scale(1)';
+    });
+    
+    button.addEventListener('click', () => this.handleButtonClick());
+    
+    container.appendChild(button);
+    console.log('Gmail toolbar button injected');
+  }
+
+  /**
+   * 標準的なボタン挿入
+   */
+  private injectStandardButton(container: HTMLElement, buttonId: string): void {
     const button = document.createElement('button');
     button.id = buttonId;
     button.className = 'gemini-reply-button';
@@ -246,9 +311,22 @@ class ContentScriptManager {
     
     button.addEventListener('click', () => this.handleButtonClick());
     
-    // ボタンを挿入
     container.appendChild(button);
-    console.log('AI reply button injected successfully');
+    console.log('Standard button injected');
+  }
+
+  /**
+   * Gmailツールバーコンテナかどうかを判定
+   */
+  private isGmailToolbarContainer(container: HTMLElement): boolean {
+    // ツールバー内、または送信ボタンの近くかをチェック
+    return !!(
+      container.closest('[role="toolbar"]') ||
+      container.querySelector('button[aria-label*="送信"]') ||
+      container.querySelector('button[aria-label*="Send"]') ||
+      container.parentElement?.querySelector('button[aria-label*="送信"]') ||
+      container.parentElement?.querySelector('button[aria-label*="Send"]')
+    );
   }
 
   private async handleButtonClick(): Promise<void> {

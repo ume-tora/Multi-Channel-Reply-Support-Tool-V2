@@ -904,7 +904,28 @@ export class GmailStrategy implements ServiceStrategy {
   private createForcedPopupContainer(): HTMLElement | null {
     console.log('Gmail: Creating forced popup container...');
 
-    // まず、送信ボタンを探す
+    // 戦略1: 送信ボタンの左側（ツールバー内）に配置
+    const toolbarContainer = this.createPopupToolbarContainer();
+    if (toolbarContainer) {
+      return toolbarContainer;
+    }
+
+    // 戦略2: 送信ボタンの直前に配置（従来の方法）
+    const beforeSendContainer = this.createBeforeSendButtonContainer();
+    if (beforeSendContainer) {
+      return beforeSendContainer;
+    }
+
+    // 戦略3: 編集エリアの下に配置
+    return this.createBelowEditorContainer();
+  }
+
+  /**
+   * 送信ボタンのツールバー内に配置（推奨方法）
+   */
+  private createPopupToolbarContainer(): HTMLElement | null {
+    console.log('Gmail: Attempting toolbar integration...');
+
     const sendButtonSelectors = [
       'button[aria-label*="送信"]',
       'button[aria-label*="Send"]',
@@ -915,7 +936,78 @@ export class GmailStrategy implements ServiceStrategy {
     for (const selector of sendButtonSelectors) {
       const sendButton = document.querySelector(selector);
       if (sendButton && this.isElementInPopup(sendButton)) {
-        console.log(`Gmail: Found send button in popup: ${selector}`);
+        console.log(`Gmail: Found send button for toolbar integration: ${selector}`);
+        
+        // 送信ボタンの親ツールバーを特定
+        const toolbar = sendButton.closest('div[role="toolbar"]') || 
+                       sendButton.parentElement;
+        
+        if (toolbar) {
+          console.log('Gmail: Found toolbar container for integration');
+          
+          // ツールバー内の他のアイコンを探す
+          const otherIcons = toolbar.querySelectorAll('div[role="button"], button');
+          
+          // 送信ボタンの直前の適切な位置を見つける
+          let insertionPoint = sendButton;
+          
+          // 送信ボタンの前にある最後のアイコンを探す
+          for (let i = otherIcons.length - 1; i >= 0; i--) {
+            const icon = otherIcons[i];
+            if (icon !== sendButton && toolbar.contains(icon)) {
+              // このアイコンの後に挿入
+              insertionPoint = icon.nextElementSibling as HTMLElement || sendButton;
+              break;
+            }
+          }
+          
+          // AIボタンを作成（ツールバースタイルに合わせる）
+          const aiButton = this.createToolbarStyleButton();
+          
+          // 適切な位置に挿入
+          toolbar.insertBefore(aiButton, insertionPoint);
+          
+          console.log('Gmail: AI button integrated into popup toolbar');
+          return aiButton.parentElement as HTMLElement;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * ツールバースタイルのAIボタンを作成
+   */
+  private createToolbarStyleButton(): HTMLElement {
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      margin: 0 4px;
+      cursor: pointer;
+    `;
+    
+    return buttonContainer;
+  }
+
+  /**
+   * 送信ボタンの直前に配置（フォールバック）
+   */
+  private createBeforeSendButtonContainer(): HTMLElement | null {
+    console.log('Gmail: Attempting before-send-button placement...');
+
+    const sendButtonSelectors = [
+      'button[aria-label*="送信"]',
+      'button[aria-label*="Send"]',
+      'div[role="button"][aria-label*="送信"]',
+      'div[role="button"][aria-label*="Send"]',
+    ];
+
+    for (const selector of sendButtonSelectors) {
+      const sendButton = document.querySelector(selector);
+      if (sendButton && this.isElementInPopup(sendButton)) {
+        console.log(`Gmail: Found send button for before-placement: ${selector}`);
         
         // 送信ボタンの直前に配置エリアを作成
         const container = document.createElement('div');
@@ -927,10 +1019,19 @@ export class GmailStrategy implements ServiceStrategy {
         
         // 送信ボタンの前に挿入
         sendButton.parentElement?.insertBefore(container, sendButton);
-        console.log('Gmail: Created forced popup container before send button');
+        console.log('Gmail: Created container before send button');
         return container;
       }
     }
+
+    return null;
+  }
+
+  /**
+   * 編集エリアの下に配置（最終フォールバック）
+   */
+  private createBelowEditorContainer(): HTMLElement | null {
+    console.log('Gmail: Attempting below-editor placement...');
 
     // 送信ボタンが見つからない場合、編集可能エリアの近くに配置
     const editableSelectors = [
@@ -941,7 +1042,7 @@ export class GmailStrategy implements ServiceStrategy {
     for (const selector of editableSelectors) {
       const editableElement = document.querySelector(selector);
       if (editableElement && this.isElementInPopup(editableElement)) {
-        console.log(`Gmail: Found editable element in popup: ${selector}`);
+        console.log(`Gmail: Found editable element for below-placement: ${selector}`);
         
         // 編集エリアの下に配置エリアを作成
         const container = document.createElement('div');
@@ -950,18 +1051,20 @@ export class GmailStrategy implements ServiceStrategy {
           justify-content: flex-end;
           padding: 8px;
           border-top: 1px solid #e0e0e0;
+          margin-top: 8px;
         `;
         
         // 編集エリアの親要素の後に挿入
         const parentElement = editableElement.parentElement;
         if (parentElement) {
           parentElement.insertAdjacentElement('afterend', container);
-          console.log('Gmail: Created forced popup container after editable area');
+          console.log('Gmail: Created container below editable area');
           return container;
         }
       }
     }
 
+    console.log('Gmail: Failed to create below-editor container');
     return null;
   }
 
