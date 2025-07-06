@@ -1,6 +1,7 @@
 import { createServiceStrategy } from './services';
 import type { ServiceStrategy } from '../shared/types';
 import { memoryManager } from '../shared/performance/MemoryManager';
+import { DragDropManager } from '../shared/ui/DragDropManager';
 class ContentScriptManager {
   private strategy: ServiceStrategy | null = null;
   private observer: MutationObserver | null = null;
@@ -15,6 +16,7 @@ class ContentScriptManager {
   private connectionPromise: Promise<void> | null = null;
   private messageQueue: Array<{message: any, resolve: (response: any) => void}> = [];
   private heartbeatInterval: number | null = null;
+  private dragDropManager: DragDropManager | null = null;
 
   constructor() {
     this.init();
@@ -233,7 +235,7 @@ class ContentScriptManager {
   }
 
   private injectGmailButton(container: HTMLElement, buttonId: string): void {
-    console.log('🎨 Injecting Gmail button...');
+    console.log('🎨 Injecting Gmail button with drag & drop...');
     
     const button = document.createElement('button');
     button.id = buttonId;
@@ -257,13 +259,13 @@ class ContentScriptManager {
       font-weight: bold !important;
       transition: all 0.2s ease !important;
       z-index: 999999 !important;
-      position: relative !important;
+      position: fixed !important;
       box-shadow: 0 4px 12px rgba(255, 68, 68, 0.5) !important;
       text-align: center !important;
     `;
     
     button.innerHTML = '🤖 AI返信生成';
-    button.title = 'AI返信生成 - 緊急修正版';
+    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
     
     button.addEventListener('mouseenter', () => {
       button.style.background = 'linear-gradient(135deg, #CC0000, #990000) !important';
@@ -281,7 +283,17 @@ class ContentScriptManager {
     });
     
     container.appendChild(button);
-    console.log('✅ Gmail button injected successfully!');
+    
+    // ドラッグ&ドロップ機能を追加
+    this.dragDropManager = new DragDropManager(button, {
+      constrainToViewport: true,
+      dragOpacity: 0.8,
+      snapToGrid: true,
+      gridSize: 20,
+      storageKey: 'gmail-ai-button-position'
+    });
+    
+    console.log('✅ Gmail button with drag & drop injected successfully!');
   }
 
   private injectChatworkButton(container: HTMLElement, buttonId: string): void {
@@ -307,13 +319,13 @@ class ContentScriptManager {
       font-weight: 500 !important;
       transition: all 0.2s ease;
       z-index: 9999 !important;
-      position: relative !important;
+      position: fixed !important;
       box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3) !important;
       flex-shrink: 0 !important;
     `;
     
     button.innerHTML = '🤖 AI返信生成';
-    button.title = 'AI返信生成';
+    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
     
     button.addEventListener('mouseenter', () => {
       button.style.background = 'linear-gradient(135deg, #c0392b, #a93226) !important';
@@ -328,7 +340,17 @@ class ContentScriptManager {
     button.addEventListener('click', () => this.handleButtonClick());
     
     container.appendChild(button);
-    console.log(`Chatwork button injected successfully`);
+    
+    // ドラッグ&ドロップ機能を追加
+    this.dragDropManager = new DragDropManager(button, {
+      constrainToViewport: true,
+      dragOpacity: 0.8,
+      snapToGrid: true,
+      gridSize: 20,
+      storageKey: 'chatwork-ai-button-position'
+    });
+    
+    console.log('✅ Chatwork button with drag & drop injected successfully');
   }
 
   private injectStandardButton(container: HTMLElement, buttonId: string): void {
@@ -336,10 +358,26 @@ class ContentScriptManager {
     button.id = buttonId;
     button.className = 'gemini-reply-button';
     button.innerHTML = '🤖 AI返信生成';
+    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
+    
+    // 標準ボタンもfixedポジションに設定
+    button.style.position = 'fixed';
+    button.style.zIndex = '9999';
+    
     button.addEventListener('click', () => this.handleButtonClick());
     
     container.appendChild(button);
-    console.log(`Standard button injected for ${this.strategy?.getServiceName()}`);
+    
+    // ドラッグ&ドロップ機能を追加
+    this.dragDropManager = new DragDropManager(button, {
+      constrainToViewport: true,
+      dragOpacity: 0.8,
+      snapToGrid: true,
+      gridSize: 20,
+      storageKey: `${this.strategy?.getServiceName()}-ai-button-position`
+    });
+    
+    console.log(`✅ Standard button with drag & drop injected for ${this.strategy?.getServiceName()}`);
   }
 
   private async handleButtonClick(): Promise<void> {
@@ -781,6 +819,12 @@ class ContentScriptManager {
           console.warn('ContentScript: Error disconnecting port:', error);
         }
         this.port = null;
+      }
+      
+      // Cleanup drag & drop manager
+      if (this.dragDropManager) {
+        this.dragDropManager.destroy();
+        this.dragDropManager = null;
       }
       
       // Safe memory cleanup without chrome APIs
