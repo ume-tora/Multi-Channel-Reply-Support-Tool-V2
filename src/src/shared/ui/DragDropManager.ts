@@ -28,6 +28,9 @@ export class DragDropManager {
   private startPos = { x: 0, y: 0 };
   private elementOffset = { x: 0, y: 0 };
   private originalPosition: DragPosition;
+  private dragHandle: HTMLElement | null = null;
+  private hasMoved = false;
+  private readonly DRAG_THRESHOLD = 5; // 5px移動でドラッグ開始
 
   constructor(element: HTMLElement, options: DragDropOptions = {}) {
     this.element = element;
@@ -66,6 +69,7 @@ export class DragDropManager {
   private addDragHandle(): void {
     const handle = document.createElement('div');
     handle.innerHTML = '⋮⋮';
+    handle.className = 'drag-handle';
     handle.style.cssText = `
       position: absolute !important;
       top: -2px !important;
@@ -92,42 +96,78 @@ export class DragDropManager {
       handle.style.opacity = '0.7';
     });
     
+    this.dragHandle = handle;
     this.element.appendChild(handle);
   }
 
   private makeDraggable(): void {
+    // 要素全体でドラッグ可能にするが、クリックとの競合を回避
     this.element.addEventListener('mousedown', this.onMouseDown.bind(this));
     document.addEventListener('mousemove', this.onMouseMove.bind(this));
     document.addEventListener('mouseup', this.onMouseUp.bind(this));
     
     // タッチイベント対応
-    this.element.addEventListener('touchstart', this.onTouchStart.bind(this));
-    document.addEventListener('touchmove', this.onTouchMove.bind(this));
+    this.element.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+    document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
     document.addEventListener('touchend', this.onTouchEnd.bind(this));
   }
 
   private onMouseDown(e: MouseEvent): void {
     if (e.button !== 0) return; // 左クリックのみ
-    this.startDrag(e.clientX, e.clientY);
-    e.preventDefault();
+    
+    // ドラッグハンドルがクリックされた場合のみ即座にドラッグ開始
+    if (this.dragHandle && (e.target === this.dragHandle || this.dragHandle.contains(e.target as Node))) {
+      this.startDrag(e.clientX, e.clientY);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // ボタン本体の場合は、移動距離で判断するために座標だけ記録
+    this.startPos = { x: e.clientX, y: e.clientY };
+    this.hasMoved = false;
+    
+    const rect = this.element.getBoundingClientRect();
+    this.elementOffset = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
   }
 
   private onTouchStart(e: TouchEvent): void {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
-    this.startDrag(touch.clientX, touch.clientY);
-    e.preventDefault();
+    
+    // タッチの場合も同様の処理
+    if (this.dragHandle && (e.target === this.dragHandle || this.dragHandle.contains(e.target as Node))) {
+      this.startDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    this.startPos = { x: touch.clientX, y: touch.clientY };
+    this.hasMoved = false;
+    
+    const rect = this.element.getBoundingClientRect();
+    this.elementOffset = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
   }
 
   private startDrag(clientX: number, clientY: number): void {
     this.isDragging = true;
-    this.startPos = { x: clientX, y: clientY };
+    this.hasMoved = true;
     
-    const rect = this.element.getBoundingClientRect();
-    this.elementOffset = {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+    // elementOffsetが設定されていない場合は計算
+    if (this.elementOffset.x === 0 && this.elementOffset.y === 0) {
+      const rect = this.element.getBoundingClientRect();
+      this.elementOffset = {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
 
     // ドラッグ開始スタイル
     this.element.style.opacity = this.options.dragOpacity.toString();
@@ -140,15 +180,44 @@ export class DragDropManager {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    if (!this.isDragging) return;
-    this.updatePosition(e.clientX, e.clientY);
+    if (this.isDragging) {
+      this.updatePosition(e.clientX, e.clientY);
+      return;
+    }
+    
+    // ドラッグが開始されていない場合、移動距離をチェック
+    if (this.startPos.x !== 0 || this.startPos.y !== 0) {
+      const deltaX = Math.abs(e.clientX - this.startPos.x);
+      const deltaY = Math.abs(e.clientY - this.startPos.y);
+      
+      if (deltaX > this.DRAG_THRESHOLD || deltaY > this.DRAG_THRESHOLD) {
+        this.hasMoved = true;
+        this.startDrag(e.clientX, e.clientY);
+      }
+    }
   }
 
   private onTouchMove(e: TouchEvent): void {
-    if (!this.isDragging || e.touches.length !== 1) return;
+    if (e.touches.length !== 1) return;
     const touch = e.touches[0];
-    this.updatePosition(touch.clientX, touch.clientY);
-    e.preventDefault();
+    
+    if (this.isDragging) {
+      this.updatePosition(touch.clientX, touch.clientY);
+      e.preventDefault();
+      return;
+    }
+    
+    // ドラッグが開始されていない場合、移動距離をチェック
+    if (this.startPos.x !== 0 || this.startPos.y !== 0) {
+      const deltaX = Math.abs(touch.clientX - this.startPos.x);
+      const deltaY = Math.abs(touch.clientY - this.startPos.y);
+      
+      if (deltaX > this.DRAG_THRESHOLD || deltaY > this.DRAG_THRESHOLD) {
+        this.hasMoved = true;
+        this.startDrag(touch.clientX, touch.clientY);
+        e.preventDefault();
+      }
+    }
   }
 
   private updatePosition(clientX: number, clientY: number): void {
@@ -172,18 +241,32 @@ export class DragDropManager {
     this.element.style.top = `${newY}px`;
   }
 
-  private onMouseUp(): void {
-    this.endDrag();
+  private onMouseUp(e: MouseEvent): void {
+    if (this.isDragging) {
+      this.endDrag();
+    } else {
+      // ドラッグされていない場合は、座標をリセット
+      this.startPos = { x: 0, y: 0 };
+      this.hasMoved = false;
+    }
   }
 
-  private onTouchEnd(): void {
-    this.endDrag();
+  private onTouchEnd(e: TouchEvent): void {
+    if (this.isDragging) {
+      this.endDrag();
+    } else {
+      // ドラッグされていない場合は、座標をリセット
+      this.startPos = { x: 0, y: 0 };
+      this.hasMoved = false;
+    }
   }
 
   private endDrag(): void {
     if (!this.isDragging) return;
     
     this.isDragging = false;
+    this.startPos = { x: 0, y: 0 };
+    this.elementOffset = { x: 0, y: 0 };
     
     // ドラッグ終了スタイル
     this.element.style.opacity = '1';

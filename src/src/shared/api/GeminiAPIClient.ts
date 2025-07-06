@@ -75,17 +75,110 @@ export class GeminiAPIClient {
   }
 
   /**
-   * Generate a reply from message array with context
+   * Generate a reply from message array with context - Enhanced with retry
    */
   static async generateContextualReply(
     messages: ServiceMessage[],
     config: GeminiConfig
   ): Promise<string> {
+    console.log('🤖 GeminiAPI: Starting contextual reply generation...', {
+      messagesCount: messages.length,
+      totalCharacters: messages.reduce((sum, m) => sum + m.text.length, 0)
+    });
+
     const conversationText = messages
       .map(m => `${m.author}: ${m.text}`)
       .join('\n\n');
 
-    return this.generateReplyFromText(conversationText, config);
+    // 🔥 Enhanced with retry logic
+    return this.generateReplyWithRetry(conversationText, config, 3);
+  }
+
+  /**
+   * Generate reply with intelligent retry mechanism
+   */
+  private static async generateReplyWithRetry(
+    conversationText: string,
+    config: GeminiConfig,
+    maxRetries: number = 3
+  ): Promise<string> {
+    const timeouts = [60000, 120000, 180000]; // 60s, 120s, 180s
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const timeout = timeouts[attempt - 1] || 180000;
+      console.log(`🤖 GeminiAPI: Attempt ${attempt}/${maxRetries} with ${timeout/1000}s timeout`);
+
+      try {
+        // Create config with dynamic timeout
+        const attemptConfig = { ...config };
+        
+        const result = await this.generateReplyFromTextWithTimeout(conversationText, attemptConfig, timeout);
+        
+        console.log(`✅ GeminiAPI: Success on attempt ${attempt}`);
+        return result;
+      } catch (error) {
+        console.error(`❌ GeminiAPI: Attempt ${attempt} failed:`, error.message);
+        
+        // Don't retry on authentication errors
+        if (error.message.includes('401') || error.message.includes('403') || error.message.includes('API key')) {
+          throw error;
+        }
+        
+        // Don't retry on quota errors
+        if (error.message.includes('429')) {
+          throw error;
+        }
+        
+        // Last attempt - throw the error
+        if (attempt === maxRetries) {
+          throw new Error(`Failed after ${maxRetries} attempts. Last error: ${error.message}`);
+        }
+        
+        // Wait before retry (exponential backoff)
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        console.log(`⏳ GeminiAPI: Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    
+    throw new Error('All retry attempts exhausted');
+  }
+
+  /**
+   * Generate reply with custom timeout
+   */
+  private static async generateReplyFromTextWithTimeout(
+    conversationText: string,
+    config: GeminiConfig,
+    timeoutMs: number
+  ): Promise<string> {
+    const prompt = this.buildConversationPrompt(conversationText);
+    
+    const messages: GeminiMessage[] = [
+      { role: 'user', content: prompt }
+    ];
+
+    return this.generateReplyWithTimeout(messages, config, timeoutMs);
+  }
+
+  /**
+   * Generate reply with explicit timeout control
+   */
+  private static async generateReplyWithTimeout(
+    messages: GeminiMessage[], 
+    config: GeminiConfig,
+    timeoutMs: number
+  ): Promise<string> {
+    try {
+      this.validateConfig(config);
+      
+      const request = this.buildRequest(messages, config);
+      const response = await this.makeAPICall(request, config.apiKey);
+      
+      return this.extractTextFromResponse(response);
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   /**
@@ -161,20 +254,103 @@ export class GeminiAPIClient {
   }
 
   private static async makeAPICall(request: GeminiRequest, apiKey: string): Promise<GeminiResponse> {
-    const response = await fetch(`${this.API_ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request)
-    });
+    const maxRetries = 3;
+    const baseTimeout = 60000; // 60秒ベースタイムアウト
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const startTime = Date.now();
+      const currentTimeout = baseTimeout * attempt; // 段階的にタイムアウトを延長
+      
+      console.log(`🌐 GeminiAPI: Starting API call (attempt ${attempt}/${maxRetries})...`, {
+        endpoint: this.API_ENDPOINT,
+        apiKeyLength: apiKey.length,
+        requestSize: JSON.stringify(request).length,
+        timeout: `${currentTimeout}ms`
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.warn(`🌐 GeminiAPI: Request timeout after ${currentTimeout}ms (attempt ${attempt})`);
+          controller.abort();
+        }, currentTimeout);
+
+        const response = await fetch(`${this.API_ENDPOINT}?key=${apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        const responseTime = Date.now() - startTime;
+        
+        console.log('🌐 GeminiAPI: Response received', {
+          attempt,
+          status: response.status,
+          statusText: response.statusText,
+          responseTime: `${responseTime}ms`,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('🌐 GeminiAPI: Error response body:', errorText);
+          
+          // 一時的なエラーの場合はリトライ
+          if (response.status >= 500 || response.status === 429) {
+            if (attempt < maxRetries) {
+              const retryDelay = 2000 * attempt; // 段階的に遅延を増加
+              console.log(`🌐 GeminiAPI: Retrying in ${retryDelay}ms due to status ${response.status}`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              continue;
+            }
+          }
+          
+          throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const jsonResponse = await response.json();
+        console.log('🌐 GeminiAPI: Successful response', {
+          attempt,
+          responseTime: `${responseTime}ms`,
+          candidatesCount: jsonResponse.candidates?.length || 0
+        });
+
+        return jsonResponse;
+        
+      } catch (error) {
+        const responseTime = Date.now() - startTime;
+        console.error(`🌐 GeminiAPI: Request failed (attempt ${attempt}/${maxRetries})`, {
+          error: error.message,
+          responseTime: `${responseTime}ms`,
+          errorType: error.name
+        });
+
+        if (error.name === 'AbortError') {
+          if (attempt < maxRetries) {
+            console.log(`🌐 GeminiAPI: Timeout on attempt ${attempt}, retrying...`);
+            continue;
+          } else {
+            throw new Error(`Gemini API request timed out after ${maxRetries} attempts`);
+          }
+        }
+        
+        // その他のエラーは即座にスロー（ネットワークエラーなど）
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // 一時的なエラーかもしれないのでリトライ
+        const retryDelay = 1000 * attempt;
+        console.log(`🌐 GeminiAPI: Retrying in ${retryDelay}ms due to error: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
-
-    return response.json();
+    
+    throw new Error('Max retry attempts reached');
   }
 
   private static extractTextFromResponse(response: GeminiResponse): string {
