@@ -81,14 +81,15 @@ export class GoogleChatSimpleStrategy implements ServiceStrategy {
     container.id = 'google-chat-floating-container';
     container.style.cssText = `
       position: fixed !important;
-      bottom: 20px !important;
-      right: 20px !important;
+      bottom: 80px !important;
+      right: 40px !important;
       z-index: 999999 !important;
       background: white !important;
       border: 2px solid #4285f4 !important;
       border-radius: 8px !important;
       padding: 8px !important;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+      max-width: 140px !important;
     `;
 
     document.body.appendChild(container);
@@ -128,8 +129,6 @@ export class GoogleChatSimpleStrategy implements ServiceStrategy {
     let foundMessages = false;
 
     for (const selector of selectors) {
-      console.log(`🔍 Trying selector: ${selector}`);
-      
       try {
         const elements = document.querySelectorAll(selector);
         console.log(`Found ${elements.length} elements with selector: ${selector}`);

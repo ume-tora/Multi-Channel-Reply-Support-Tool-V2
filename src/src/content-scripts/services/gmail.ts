@@ -762,7 +762,7 @@ export class GmailStrategy implements ServiceStrategy {
   }
 
   /**
-   * ポップアップ表示用のツールバーを探す
+   * ポップアップ表示用のツールバーを探す（画面内配置を保証）
    */
   private findPopupToolbar(): HTMLElement | null {
     console.log('Gmail: Searching for popup toolbar...');
@@ -786,16 +786,6 @@ export class GmailStrategy implements ServiceStrategy {
       'div[role="dialog"] div[aria-label*="Format"]',
       'div[aria-modal="true"] div[aria-label*="フォーマット"]',
       'div[aria-modal="true"] div[aria-label*="Format"]',
-      
-      // ポップアップ内の送信ボタン周辺（最後に試す）
-      'div[role="dialog"] button[aria-label*="送信"]',
-      'div[role="dialog"] button[aria-label*="Send"]',
-      'div[aria-modal="true"] button[aria-label*="送信"]',
-      'div[aria-modal="true"] button[aria-label*="Send"]',
-      'div.nH.aHU button[aria-label*="送信"]',
-      'div.nH.aHU button[aria-label*="Send"]',
-      'div[role="dialog"] div[role="button"][aria-label*="送信"]',
-      'div[role="dialog"] div[role="button"][aria-label*="Send"]',
     ];
 
     for (const selector of popupToolbarSelectors) {
@@ -819,7 +809,8 @@ export class GmailStrategy implements ServiceStrategy {
 
         if (toolbar && this.isValidToolbar(toolbar)) {
           console.log('Gmail: Found valid popup toolbar');
-          return toolbar;
+          // 画面内配置を保証するためのコンテナを返す
+          return this.createScreenSafeContainer(toolbar);
         }
       }
     }
@@ -830,12 +821,59 @@ export class GmailStrategy implements ServiceStrategy {
       const toolbar = dialog.querySelector('div[role="toolbar"]');
       if (toolbar && this.isValidToolbar(toolbar as HTMLElement)) {
         console.log('Gmail: Found popup toolbar via dialog fallback');
-        return toolbar as HTMLElement;
+        return this.createScreenSafeContainer(toolbar as HTMLElement);
       }
     }
 
     console.log('Gmail: No popup toolbar found');
     return null;
+  }
+
+  /**
+   * 画面内配置を保証するコンテナを作成
+   */
+  private createScreenSafeContainer(toolbar: HTMLElement): HTMLElement {
+    console.log('Gmail: Creating screen-safe container for popup');
+    
+    // 送信ボタンを探す
+    const sendButton = toolbar.querySelector('button[aria-label*="送信"], button[aria-label*="Send"]') ||
+                      toolbar.parentElement?.querySelector('button[aria-label*="送信"], button[aria-label*="Send"]');
+    
+    if (sendButton) {
+      console.log('Gmail: Found send button, creating container before it');
+      
+      // 送信ボタンの直前に専用コンテナを作成
+      const container = document.createElement('div');
+      container.style.cssText = `
+        display: inline-flex !important;
+        align-items: center !important;
+        margin-right: 8px !important;
+        position: relative !important;
+        z-index: 10000 !important;
+        flex-shrink: 0 !important;
+      `;
+      
+      // 送信ボタンの前に挿入
+      sendButton.parentElement?.insertBefore(container, sendButton);
+      return container;
+    }
+    
+    // 送信ボタンが見つからない場合、ツールバーの最初に配置
+    console.log('Gmail: No send button found, creating container at toolbar start');
+    
+    const container = document.createElement('div');
+    container.style.cssText = `
+      display: inline-flex !important;
+      align-items: center !important;
+      margin-right: 8px !important;
+      position: relative !important;
+      z-index: 10000 !important;
+      flex-shrink: 0 !important;
+    `;
+    
+    // ツールバーの最初に挿入
+    toolbar.insertBefore(container, toolbar.firstChild);
+    return container;
   }
 
   /**
@@ -866,7 +904,21 @@ export class GmailStrategy implements ServiceStrategy {
           const parentContainer = sendButton.parentElement;
           if (parentContainer) {
             console.log('Gmail: Using send button parent as fallback container');
-            return parentContainer as HTMLElement;
+            
+            // 送信ボタンの前に専用コンテナを作成
+            const container = document.createElement('div');
+            container.style.cssText = `
+              display: inline-flex !important;
+              align-items: center !important;
+              margin-right: 8px !important;
+              position: relative !important;
+              z-index: 10000 !important;
+              flex-shrink: 0 !important;
+            `;
+            
+            // 送信ボタンの前に挿入
+            parentContainer.insertBefore(container, sendButton);
+            return container;
           }
         }
       }
@@ -959,23 +1011,11 @@ export class GmailStrategy implements ServiceStrategy {
         console.log(`Gmail: Found send button for precise integration: ${selector}`);
         console.log(`Send button parent classes: ${sendButton.parentElement?.className}`);
         
-        // 戦略1: 送信ボタンの直前（同じ親要素内）に配置
-        const directParent = sendButton.parentElement;
-        if (directParent) {
-          console.log('Gmail: Attempting direct parent insertion');
-          
-          // 送信ボタンの直前に専用コンテナを作成
-          const aiContainer = document.createElement('div');
-          aiContainer.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            margin-right: 8px;
-          `;
-          
-          // 送信ボタンの直前に挿入
-          directParent.insertBefore(aiContainer, sendButton);
-          console.log('Gmail: Created AI container before send button');
-          return aiContainer;
+        // 戦略1: 送信ボタンの左側（理想位置）に配置
+        console.log('Gmail: Attempting left-side placement strategy');
+        const leftSideContainer = this.createLeftSideContainer(sendButton);
+        if (leftSideContainer) {
+          return leftSideContainer;
         }
         
         // 戦略2: より具体的なツールバー検索
@@ -1012,6 +1052,118 @@ export class GmailStrategy implements ServiceStrategy {
     }
 
     return null;
+  }
+
+  /**
+   * 送信ボタンの左側に安全に配置
+   */
+  private createLeftSideContainer(sendButton: Element): HTMLElement | null {
+    console.log('Gmail: Creating left-side container for safe positioning');
+
+    // 送信ボタンの親ツールバーを探す
+    let toolbar = sendButton.closest('[role="toolbar"]');
+    if (!toolbar) {
+      // role="toolbar"がない場合、親要素を確認
+      toolbar = sendButton.parentElement;
+    }
+
+    if (!toolbar) {
+      console.log('Gmail: No toolbar found for left-side placement');
+      return null;
+    }
+
+    console.log(`Gmail: Found toolbar for left-side placement: ${toolbar.className}`);
+
+    // ツールバー内の全ボタンを取得
+    const allButtons = Array.from(toolbar.querySelectorAll('button, div[role="button"]'));
+    const sendButtonIndex = allButtons.findIndex(btn => 
+      btn === sendButton || btn.contains(sendButton)
+    );
+
+    console.log(`Gmail: Send button index in toolbar: ${sendButtonIndex} / ${allButtons.length}`);
+
+    if (sendButtonIndex <= 0) {
+      console.log('Gmail: Send button is first or not found, using alternative placement');
+      return this.createAlternativeContainer(sendButton);
+    }
+
+    // 送信ボタンの直前のボタンを特定
+    const previousButton = allButtons[sendButtonIndex - 1];
+    console.log(`Gmail: Previous button found: ${previousButton.tagName}.${previousButton.className}`);
+
+    // 前のボタンの後ろに配置
+    const aiContainer = document.createElement('div');
+    aiContainer.style.cssText = `
+      display: inline-flex !important;
+      align-items: center;
+      margin: 0 6px;
+      flex-shrink: 0;
+    `;
+
+    // 前のボタンの後に挿入
+    previousButton.parentElement?.insertBefore(aiContainer, previousButton.nextSibling);
+    console.log('Gmail: AI container placed after previous button');
+    return aiContainer;
+  }
+
+  /**
+   * 代替配置戦略（編集エリア上部）
+   */
+  private createAlternativeContainer(sendButton: Element): HTMLElement | null {
+    console.log('Gmail: Creating alternative container above editor');
+
+    // 編集可能エリアを探す
+    const editableElements = document.querySelectorAll('div[contenteditable="true"]');
+    
+    for (const editable of editableElements) {
+      if (this.isElementInPopup(editable)) {
+        console.log('Gmail: Found editable area in popup');
+        
+        // 編集エリアの上に配置バーを作成
+        const headerContainer = document.createElement('div');
+        headerContainer.style.cssText = `
+          display: flex !important;
+          justify-content: flex-end;
+          align-items: center;
+          padding: 8px 12px;
+          border-bottom: 1px solid #e8eaed;
+          background: #f8f9fa;
+          margin-bottom: 4px;
+        `;
+
+        // 編集エリアの直前に挿入
+        editable.parentElement?.insertBefore(headerContainer, editable);
+        console.log('Gmail: Alternative container created above editor');
+        return headerContainer;
+      }
+    }
+
+    // 最後の手段: 固定位置に配置
+    return this.createFixedPositionContainer();
+  }
+
+  /**
+   * 固定位置コンテナ（最終手段）
+   */
+  private createFixedPositionContainer(): HTMLElement | null {
+    console.log('Gmail: Creating fixed position container as last resort');
+
+    const fixedContainer = document.createElement('div');
+    fixedContainer.style.cssText = `
+      position: fixed !important;
+      top: 80px;
+      right: 20px;
+      z-index: 10000 !important;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+
+    document.body.appendChild(fixedContainer);
+    console.log('Gmail: Fixed position container created');
+    return fixedContainer;
   }
 
   /**
