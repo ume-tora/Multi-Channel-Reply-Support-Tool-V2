@@ -193,6 +193,8 @@ class ContentScriptManager {
     
     if (serviceName === 'gmail') {
       this.injectGmailButton(container, buttonId);
+    } else if (serviceName === 'chatwork') {
+      this.injectChatworkButton(container, buttonId);
     } else {
       this.injectStandardButton(container, buttonId);
     }
@@ -250,6 +252,53 @@ class ContentScriptManager {
     } else {
       container.appendChild(button);
     }
+  }
+
+  private injectChatworkButton(container: HTMLElement, buttonId: string): void {
+    const button = document.createElement('button');
+    button.id = buttonId;
+    button.setAttribute('role', 'button');
+    button.setAttribute('aria-label', 'AI返信生成');
+    button.className = 'gemini-reply-button';
+    
+    button.style.cssText = `
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      margin: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+      color: white !important;
+      border: none !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      transition: all 0.2s ease;
+      z-index: 9999 !important;
+      position: relative !important;
+      box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3) !important;
+      flex-shrink: 0 !important;
+    `;
+    
+    button.innerHTML = '🤖 AI返信生成';
+    button.title = 'AI返信生成';
+    
+    button.addEventListener('mouseenter', () => {
+      button.style.background = 'linear-gradient(135deg, #c0392b, #a93226) !important';
+      button.style.transform = 'scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b) !important';
+      button.style.transform = 'scale(1)';
+    });
+    
+    button.addEventListener('click', () => this.handleButtonClick());
+    
+    container.appendChild(button);
+    console.log(`Chatwork button injected successfully`);
   }
 
   private injectStandardButton(container: HTMLElement, buttonId: string): void {

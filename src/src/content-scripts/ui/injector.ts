@@ -32,12 +32,56 @@ export class UIInjector {
       const button = this.createReplyButton(strategy);
       container.appendChild(button);
 
-      // 挿入位置を決定
-      if (insertionPoint.children.length > 0) {
-        // 最初の子要素の後に挿入
-        insertionPoint.insertBefore(container, insertionPoint.children[0].nextSibling);
-      } else {
-        // 子要素がない場合は末尾に追加
+      // 挿入位置を決定 - より柔軟な挿入戦略
+      const insertionStrategies = [
+        // 戦略1: 最初の子要素の後に挿入
+        () => {
+          if (insertionPoint.children.length > 0) {
+            insertionPoint.insertBefore(container, insertionPoint.children[0].nextSibling);
+            return true;
+          }
+          return false;
+        },
+        // 戦略2: 送信ボタンの前に挿入
+        () => {
+          const sendButton = insertionPoint.querySelector('button[type="submit"], button[title*="送信"], button[title*="Send"]');
+          if (sendButton) {
+            insertionPoint.insertBefore(container, sendButton);
+            return true;
+          }
+          return false;
+        },
+        // 戦略3: 最後の子要素の前に挿入
+        () => {
+          if (insertionPoint.children.length > 0) {
+            insertionPoint.insertBefore(container, insertionPoint.lastElementChild);
+            return true;
+          }
+          return false;
+        },
+        // 戦略4: 末尾に追加
+        () => {
+          insertionPoint.appendChild(container);
+          return true;
+        },
+      ];
+
+      // 挿入戦略を順番に試行
+      let inserted = false;
+      for (const strategy of insertionStrategies) {
+        try {
+          if (strategy()) {
+            inserted = true;
+            break;
+          }
+        } catch (error) {
+          console.warn('Insertion strategy failed:', error);
+          continue;
+        }
+      }
+
+      if (!inserted) {
+        console.warn('All insertion strategies failed, using fallback');
         insertionPoint.appendChild(container);
       }
 
