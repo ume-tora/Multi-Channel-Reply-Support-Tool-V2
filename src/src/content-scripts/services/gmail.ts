@@ -10,21 +10,15 @@ export class GmailStrategy implements ServiceStrategy {
   findInsertionPoint(): HTMLElement | null {
     try {
       // 最新のGmail UI（2024-2025版）に対応したセレクター戦略
-      console.log('Gmail: Looking for insertion point...');
-      
-      // 現在のGmailのビューを検出
       const currentView = this.detectGmailView();
-      console.log(`Gmail: Detected view: ${currentView}`);
 
       // ポップアップ表示の場合の特別な処理
       if (this.isPopupView()) {
-        console.log('Gmail: Detected popup compose view');
         const popupToolbar = this.findPopupToolbar();
         if (popupToolbar) {
-          console.log('Gmail: Found popup toolbar successfully');
           return popupToolbar;
         } else {
-          console.warn('Gmail: Popup detected but no toolbar found, trying fallback');
+          // Silent fallback to reduce console noise
           // フォールバック: ポップアップ内で適切な要素を作成
           const fallbackContainer = this.createPopupFallbackContainer();
           if (fallbackContainer) {

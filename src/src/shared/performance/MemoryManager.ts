@@ -16,7 +16,7 @@ export class MemoryManager {
   private memoryCheckInterval: number | null = null;
   private readonly MEMORY_WARNING_THRESHOLD = 70; // 70% memory usage
   private readonly MEMORY_CRITICAL_THRESHOLD = 85; // 85% memory usage
-  private readonly MEMORY_CHECK_INTERVAL = 30000; // 30 seconds
+  private readonly MEMORY_CHECK_INTERVAL = 120000; // 2 minutes
 
   private constructor() {
     this.startMemoryMonitoring();
@@ -153,6 +153,12 @@ export class MemoryManager {
    */
   private async clearExpiredCache(): Promise<void> {
     try {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        console.warn('MemoryManager: Extension context invalidated, skipping cache cleanup');
+        return;
+      }
+
       const { ChromeStorageManager } = await import('../storage/ChromeStorageManager');
       const clearedCount = await ChromeStorageManager.clearExpiredCache();
       
@@ -160,6 +166,11 @@ export class MemoryManager {
         console.log(`MemoryManager: Cleared ${clearedCount} expired cache entries`);
       }
     } catch (error) {
+      if (error.message?.includes('Extension context invalidated') || 
+          error.message?.includes('context invalidated')) {
+        console.warn('MemoryManager: Extension context invalidated during cache cleanup');
+        return;
+      }
       console.error('MemoryManager: Error clearing expired cache:', error);
     }
   }
@@ -185,6 +196,13 @@ export class MemoryManager {
       clearInterval(this.memoryCheckInterval);
       this.memoryCheckInterval = null;
     }
+  }
+
+  /**
+   * Cleanup resources and run cleanup tasks
+   */
+  cleanup(): void {
+    this.forceCleanup();
   }
 
   /**

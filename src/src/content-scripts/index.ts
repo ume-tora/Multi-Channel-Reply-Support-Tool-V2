@@ -336,6 +336,13 @@ class ContentScriptManager {
 
   private async getApiKey(): Promise<string | null> {
     return new Promise((resolve) => {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        console.warn('ContentScript: Extension context invalidated, cannot get API key');
+        resolve(null);
+        return;
+      }
+
       chrome.storage.local.get('settings.apiKey', (result) => {
         if (chrome.runtime.lastError) {
           console.error('Chrome storage error:', chrome.runtime.lastError);
@@ -437,10 +444,7 @@ class ContentScriptManager {
   private scheduleRetry(): void {
     if (this.retryCount < this.MAX_RETRIES) {
       this.retryCount++;
-      console.log(`Scheduling retry ${this.retryCount}/${this.MAX_RETRIES} in ${this.RETRY_DELAY}ms`);
-      setTimeout(() => this.checkAndInjectButton(), this.RETRY_DELAY);
-    } else {
-      console.log('Max retries reached, stopping attempts');
+      setTimeout(() => this.checkAndInjectButton(), this.RETRY_DELAY * this.retryCount);
     }
   }
 
@@ -459,7 +463,7 @@ class ContentScriptManager {
         }
       }
       
-      if (shouldCheck) {
+      if (shouldCheck && this.retryCount < this.MAX_RETRIES) {
         setTimeout(() => this.checkAndInjectButton(), 500);
       }
     });
@@ -501,11 +505,21 @@ class ContentScriptManager {
   }
 
   private cleanup(): void {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
+    try {
+      if (this.observer) {
+        this.observer.disconnect();
+        this.observer = null;
+      }
+      
+      // Safe cleanup with extension context check
+      if (chrome.runtime?.id) {
+        memoryManager.cleanup();
+      } else {
+        console.warn('ContentScript: Extension context invalidated, skipping memory cleanup');
+      }
+    } catch (error) {
+      console.error('ContentScript: Error during cleanup:', error);
     }
-    memoryManager.cleanup();
   }
 }
 

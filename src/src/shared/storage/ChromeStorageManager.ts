@@ -169,6 +169,12 @@ export class ChromeStorageManager {
    */
   static async clearExpiredCache(): Promise<number> {
     try {
+      // Extension context validity check
+      if (!chrome.runtime?.id) {
+        console.warn('ChromeStorageManager: Extension context invalidated, skipping cache cleanup');
+        return 0;
+      }
+
       const allData = await chrome.storage.local.get();
       const now = Date.now();
       const keysToRemove: string[] = [];
@@ -193,6 +199,12 @@ export class ChromeStorageManager {
 
       return keysToRemove.length;
     } catch (error) {
+      // Check if error is related to extension context invalidation
+      if (error.message?.includes('Extension context invalidated') || 
+          error.message?.includes('context invalidated')) {
+        console.warn('ChromeStorageManager: Extension context invalidated during cache cleanup');
+        return 0;
+      }
       console.error('ChromeStorageManager: Error clearing expired cache:', error);
       return 0;
     }
