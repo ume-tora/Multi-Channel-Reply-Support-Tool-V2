@@ -9,6 +9,12 @@ export class GmailStrategy implements ServiceStrategy {
 
   findInsertionPoint(): HTMLElement | null {
     try {
+      // DOM読み込み完了を待機
+      if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
+        console.log('Gmail: DOM not ready, deferring insertion point detection');
+        return null;
+      }
+
       // 最新のGmail UI（2024-2025版）に対応したセレクター戦略
       const currentView = this.detectGmailView();
 

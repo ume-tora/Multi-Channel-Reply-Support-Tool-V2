@@ -285,42 +285,32 @@ class BackgroundManager {
   }
 
   private setupPeriodicCleanup(): void {
-    // 1時間ごとに期限切れキャッシュをクリーンアップ
-    const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
-
-    setInterval(async () => {
-      try {
-        console.log('Running periodic cache cleanup...');
-        await StorageService.clearExpiredCache();
-      } catch (error) {
-        console.error('Error during periodic cleanup:', error);
-      }
-    }, CLEANUP_INTERVAL);
-
-    console.log('Periodic cleanup scheduled');
+    // Manifest V3: Use chrome.alarms instead of setInterval for periodic tasks
+    // setInterval violates service worker lifecycle rules
+    this.setupAlarmCleanup();
   }
 
-  // アラーム機能を使用したクリーンアップ（より効率的）
-  // private setupAlarmCleanup(): void {
-  //   chrome.alarms.onAlarm.addListener(async (alarm) => {
-  //     if (alarm.name === 'cache-cleanup') {
-  //       try {
-  //         console.log('Running scheduled cache cleanup...');
-  //         await StorageService.clearExpiredCache();
-  //       } catch (error) {
-  //         console.error('Error during scheduled cleanup:', error);
-  //       }
-  //     }
-  //   });
+  // アラーム機能を使用したクリーンアップ（Manifest V3準拠）
+  private setupAlarmCleanup(): void {
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+      if (alarm.name === 'cache-cleanup') {
+        try {
+          console.log('Running scheduled cache cleanup...');
+          await StorageService.clearExpiredCache();
+        } catch (error) {
+          console.error('Error during scheduled cleanup:', error);
+        }
+      }
+    });
 
-  //   // 1時間ごとにアラームを設定
-  //   chrome.alarms.create('cache-cleanup', { 
-  //     delayInMinutes: 60,
-  //     periodInMinutes: 60 
-  //   });
+    // 1時間ごとにアラームを設定
+    chrome.alarms.create('cache-cleanup', { 
+      delayInMinutes: 60,
+      periodInMinutes: 60 
+    });
 
-  //   console.log('Alarm-based cleanup scheduled');
-  // }
+    console.log('Alarm-based cleanup scheduled');
+  }
 }
 
 // Background scriptを初期化

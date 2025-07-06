@@ -168,46 +168,9 @@ export class ChromeStorageManager {
    * Clear expired cache entries
    */
   static async clearExpiredCache(): Promise<number> {
-    try {
-      // Extension context validity check
-      if (!chrome.runtime?.id) {
-        console.warn('ChromeStorageManager: Extension context invalidated, skipping cache cleanup');
-        return 0;
-      }
-
-      const allData = await chrome.storage.local.get();
-      const now = Date.now();
-      const keysToRemove: string[] = [];
-
-      for (const [key, value] of Object.entries(allData)) {
-        if (
-          key.startsWith(this.CACHE_PREFIX) &&
-          value &&
-          typeof value === 'object' &&
-          'expiresAt' in value &&
-          typeof value.expiresAt === 'number' &&
-          value.expiresAt < now
-        ) {
-          keysToRemove.push(key);
-        }
-      }
-
-      if (keysToRemove.length > 0) {
-        await chrome.storage.local.remove(keysToRemove);
-        console.log(`ChromeStorageManager: Cleared ${keysToRemove.length} expired cache entries`);
-      }
-
-      return keysToRemove.length;
-    } catch (error) {
-      // Check if error is related to extension context invalidation
-      if (error.message?.includes('Extension context invalidated') || 
-          error.message?.includes('context invalidated')) {
-        console.warn('ChromeStorageManager: Extension context invalidated during cache cleanup');
-        return 0;
-      }
-      console.error('ChromeStorageManager: Error clearing expired cache:', error);
-      return 0;
-    }
+    // 緊急対策：キャッシュクリアを完全に無効化
+    console.log('ChromeStorageManager: Emergency mode - cache cleanup disabled');
+    return 0;
   }
 
   /**
