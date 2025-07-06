@@ -38,7 +38,7 @@ export type ServiceType = 'gmail' | 'chatwork' | 'google-chat';
 
 export interface ServiceStrategy {
   /** ボタンを挿入すべきDOM要素を見つける */
-  findInsertionPoint(): HTMLElement | null;
+  findInsertionPoint(): HTMLElement | null | Promise<HTMLElement | null>;
 
   /** 現在の会話の文脈（メッセージ履歴）を抽出する */
   extractMessages(): ServiceMessage[];

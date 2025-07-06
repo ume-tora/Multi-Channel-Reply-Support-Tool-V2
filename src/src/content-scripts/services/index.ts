@@ -1,10 +1,12 @@
 export type { ServiceStrategy, Message } from './interface';
 export { GmailStrategy } from './gmail';
+export { GmailSimpleStrategy } from './gmail-simple';
 export { ChatworkStrategy } from './chatwork';
 export { GoogleChatSimpleStrategy } from './google-chat-simple';
 
 import type { ServiceStrategy } from './interface';
 import { GmailStrategy } from './gmail';
+import { GmailSimpleStrategy } from './gmail-simple';
 import { ChatworkStrategy } from './chatwork';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';
 
@@ -22,7 +24,9 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
   
   switch (hostname) {
     case 'mail.google.com':
-      return new GmailStrategy();
+      // 🚨 緊急修正: シンプル戦略を使用
+      console.log('🚨 Using Gmail Simple Strategy for emergency fix');
+      return new GmailSimpleStrategy();
     
     case 'www.chatwork.com':
     case 'chatwork.com':

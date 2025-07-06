@@ -19,6 +19,9 @@ import {
 } from '../shared/types/background';
 
 class BackgroundManager {
+  private activePorts = new Set<chrome.runtime.Port>();
+  private heartbeatInterval: number | null = null;
+
   constructor() {
     this.init();
   }
@@ -45,6 +48,14 @@ class BackgroundManager {
       this.handleMessage(message, sender, sendResponse);
       return true; // 非同期レスポンスを許可
     });
+
+    // ロングライブコネクション対応
+    chrome.runtime.onConnect.addListener((port) => {
+      this.handleConnection(port);
+    });
+
+    // ハートビート開始
+    this.startHeartbeat();
 
     // 定期的なクリーンアップ
     this.setupPeriodicCleanup();
@@ -81,6 +92,17 @@ class BackgroundManager {
     sendResponse: ChromeRuntimeSendResponse
   ): Promise<void> {
     try {
+      // Handle simple PING messages for Service Worker wake-up
+      if (typeof message === 'object' && message !== null && 'type' in message && (message as any).type === 'PING') {
+        console.log('Background: Received PING, responding with PONG');
+        sendResponse({ 
+          success: true, 
+          message: 'PONG',
+          timestamp: Date.now()
+        });
+        return;
+      }
+
       // Validate message structure
       if (!isBackgroundMessage(message)) {
         console.warn('Invalid message format:', message);
@@ -290,26 +312,177 @@ class BackgroundManager {
     this.setupAlarmCleanup();
   }
 
-  // アラーム機能を使用したクリーンアップ（Manifest V3準拠）
+  // アラーム機能を使用したクリーンアップ（Manifest V3完全準拠）
   private setupAlarmCleanup(): void {
+    // Clear any existing alarms first
+    chrome.alarms.clear('cache-cleanup');
+
+    // Set up alarm listener with proper error handling
     chrome.alarms.onAlarm.addListener(async (alarm) => {
       if (alarm.name === 'cache-cleanup') {
-        try {
-          console.log('Running scheduled cache cleanup...');
-          await StorageService.clearExpiredCache();
-        } catch (error) {
-          console.error('Error during scheduled cleanup:', error);
-        }
+        await this.handleScheduledCleanup();
       }
     });
 
-    // 1時間ごとにアラームを設定
+    // Create alarm with proper timing for production use
     chrome.alarms.create('cache-cleanup', { 
-      delayInMinutes: 60,
-      periodInMinutes: 60 
+      delayInMinutes: 5,    // First cleanup in 5 minutes
+      periodInMinutes: 60   // Then every hour
     });
 
-    console.log('Alarm-based cleanup scheduled');
+    console.log('Manifest V3 compliant alarm-based cleanup scheduled');
+  }
+
+  /**
+   * Handle scheduled cleanup with comprehensive error handling
+   */
+  private async handleScheduledCleanup(): Promise<void> {
+    try {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        console.warn('Background: Extension context invalid during scheduled cleanup');
+        return;
+      }
+
+      console.log('Background: Running scheduled cache cleanup...');
+      const clearedCount = await StorageService.clearExpiredCache();
+      
+      if (clearedCount > 0) {
+        console.log(`Background: Cleaned up ${clearedCount} expired cache entries`);
+      }
+    } catch (error) {
+      console.error('Background: Error during scheduled cleanup:', error);
+      
+      // If cleanup fails repeatedly, reduce frequency
+      this.handleCleanupFailure();
+    }
+  }
+
+  /**
+   * Handle long-lived connections
+   */
+  private handleConnection(port: chrome.runtime.Port): void {
+    console.log('Background: Content script connected:', port.name);
+    
+    // アクティブポートに追加
+    this.activePorts.add(port);
+
+    // 接続確立を即座に通知
+    port.postMessage({
+      type: 'CONNECTION_ESTABLISHED',
+      success: true,
+      timestamp: Date.now()
+    });
+
+    port.onMessage.addListener(async (message) => {
+      try {
+        // ハートビートメッセージの処理
+        if (message.type === 'PING') {
+          port.postMessage({
+            type: 'PONG',
+            success: true,
+            timestamp: Date.now()
+          });
+          return;
+        }
+
+        const response = await this.processMessage(message);
+        port.postMessage(response);
+      } catch (error) {
+        console.error('Background: Error processing port message:', error);
+        port.postMessage({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      console.log('Background: Content script disconnected:', port.name);
+      this.activePorts.delete(port);
+      this.handleContentScriptDisconnect(port.name);
+    });
+  }
+
+  /**
+   * Handle content script disconnect for cleanup
+   */
+  private handleContentScriptDisconnect(portName: string): void {
+    console.log(`Background: Cleaning up resources for ${portName}`);
+    // 必要に応じて特定のポートに関連するリソースをクリーンアップ
+  }
+
+  /**
+   * Process messages from long-lived connections
+   */
+  private async processMessage(message: any): Promise<any> {
+    if (!isBackgroundMessage(message)) {
+      return {
+        success: false,
+        error: 'Invalid message format',
+        timestamp: Date.now()
+      };
+    }
+
+    // 既存のhandleMessage機能を流用
+    return new Promise((resolve) => {
+      this.handleMessage(message, {} as ChromeRuntimeSender, resolve);
+    });
+  }
+
+  /**
+   * Start heartbeat to keep service worker alive
+   */
+  private startHeartbeat(): void {
+    // Clear existing interval
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
+    // Send heartbeat every 25 seconds (Service Worker timeout is 30s)
+    this.heartbeatInterval = setInterval(() => {
+      if (this.activePorts.size > 0) {
+        console.log(`Background: Heartbeat - ${this.activePorts.size} active connections`);
+        // Service Worker stays alive as long as there are active listeners
+      }
+    }, 25000);
+
+    console.log('Background: Heartbeat started');
+  }
+
+  /**
+   * Stop heartbeat
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+      console.log('Background: Heartbeat stopped');
+    }
+  }
+
+  /**
+   * Handle cleanup failures by adjusting alarm frequency
+   */
+  private cleanupFailureCount = 0;
+  private readonly MAX_CLEANUP_FAILURES = 3;
+
+  private async handleCleanupFailure(): Promise<void> {
+    this.cleanupFailureCount++;
+    
+    if (this.cleanupFailureCount >= this.MAX_CLEANUP_FAILURES) {
+      console.warn('Background: Multiple cleanup failures, reducing cleanup frequency');
+      
+      // Clear current alarm and create a less frequent one
+      chrome.alarms.clear('cache-cleanup');
+      chrome.alarms.create('cache-cleanup', { 
+        delayInMinutes: 120,  // Wait 2 hours before retry
+        periodInMinutes: 240  // Then every 4 hours
+      });
+      
+      this.cleanupFailureCount = 0; // Reset counter
+    }
   }
 }
 

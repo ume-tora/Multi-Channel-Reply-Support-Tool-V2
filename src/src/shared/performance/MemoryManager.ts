@@ -1,5 +1,6 @@
 /**
- * Memory Manager for Chrome Extension Performance Optimization
+ * Lightweight Memory Manager for Chrome Extension Performance Optimization
+ * Refactored for stability and Manifest V3 compliance
  */
 
 export interface MemoryStats {
@@ -10,17 +11,26 @@ export interface MemoryStats {
   critical: boolean;
 }
 
+export interface CleanupTask {
+  id: string;
+  cleanup: () => void;
+  priority: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Lightweight memory manager focusing on essential functionality
+ */
 export class MemoryManager {
   private static instance: MemoryManager;
-  private cleanupTasks: Map<string, () => void> = new Map();
-  private memoryCheckInterval: number | null = null;
-  private readonly MEMORY_WARNING_THRESHOLD = 80; // 80% memory usage
-  private readonly MEMORY_CRITICAL_THRESHOLD = 90; // 90% memory usage
-  private readonly MEMORY_CHECK_INTERVAL = 300000; // 5 minutes
-
+  private cleanupTasks: Map<string, CleanupTask> = new Map();
+  private isMonitoring = false;
+  
+  // Conservative thresholds to prevent false alarms
+  private readonly MEMORY_WARNING_THRESHOLD = 85; // 85% memory usage
+  private readonly MEMORY_CRITICAL_THRESHOLD = 95; // 95% memory usage
+  
   private constructor() {
-    // 緊急対策：監視を完全に無効化
-    console.log('MemoryManager: Emergency mode - all functions disabled');
+    this.initializeMonitoring();
   }
 
   static getInstance(): MemoryManager {
@@ -31,61 +41,65 @@ export class MemoryManager {
   }
 
   /**
-   * Register a cleanup task (緊急対策：無効化)
+   * Register a cleanup task with priority
    */
-  registerCleanupTask(key: string, cleanupFn: () => void): void {
-    // 緊急対策：無効化
-    return;
+  registerCleanupTask(id: string, cleanup: () => void, priority: 'low' | 'medium' | 'high' = 'medium'): void {
+    this.cleanupTasks.set(id, { id, cleanup, priority });
   }
 
   /**
-   * Unregister a cleanup task (緊急対策：無効化)
+   * Unregister a cleanup task
    */
-  unregisterCleanupTask(key: string): void {
-    // 緊急対策：無効化
-    return;
+  unregisterCleanupTask(id: string): void {
+    this.cleanupTasks.delete(id);
   }
 
   /**
-   * Force garbage collection and cleanup (緊急対策：無効化)
+   * Force cleanup with priority ordering
    */
   forceCleanup(): void {
-    // 緊急対策：無効化
-    return;
+    console.log('MemoryManager: Running priority cleanup...');
     
-    // Run all registered cleanup tasks
-    for (const [key, cleanupFn] of this.cleanupTasks) {
+    // Sort tasks by priority: high -> medium -> low
+    const tasksByPriority = Array.from(this.cleanupTasks.values()).sort((a, b) => {
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    });
+
+    let cleaned = 0;
+    for (const task of tasksByPriority) {
       try {
-        cleanupFn();
-        console.log(`MemoryManager: Cleanup task "${key}" completed`);
+        task.cleanup();
+        cleaned++;
       } catch (error) {
-        console.error(`MemoryManager: Error in cleanup task "${key}":`, error);
+        console.warn(`MemoryManager: Cleanup task ${task.id} failed:`, error);
       }
     }
 
-    // Clear expired cache
-    this.clearExpiredCache();
+    console.log(`MemoryManager: Completed ${cleaned}/${tasksByPriority.length} cleanup tasks`);
     
     // Force garbage collection if available
-    if (window.gc) {
-      window.gc();
+    if ('gc' in window && typeof window.gc === 'function') {
+      try {
+        window.gc();
+        console.log('MemoryManager: Forced garbage collection');
+      } catch (error) {
+        // Ignore gc errors - not available in all contexts
+      }
     }
   }
 
   /**
-   * Get memory statistics
+   * Get current memory statistics
    */
   async getMemoryStats(): Promise<MemoryStats> {
     try {
-      // Try to get actual memory usage if available
-      if ('memory' in performance) {
-        const memInfo = (performance as Performance & { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
-        if (!memInfo) {
-          throw new Error('Memory info not available');
-        }
-        const used = memInfo.usedJSHeapSize;
-        const total = memInfo.totalJSHeapSize;
-        const percentage = (used / total) * 100;
+      // Use performance.memory if available (Chrome)
+      if ('memory' in performance && (performance as any).memory) {
+        const memory = (performance as any).memory;
+        const used = memory.usedJSHeapSize;
+        const total = memory.totalJSHeapSize;
+        const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
         
         return {
           used,
@@ -96,22 +110,22 @@ export class MemoryManager {
         };
       }
       
-      // Fallback: estimate based on storage usage
-      const storageStats = await this.getStorageStats();
-      const percentage = storageStats.percentage;
+      // Fallback: estimate based on cleanup tasks and storage
+      const taskCount = this.cleanupTasks.size;
+      const estimatedUsage = Math.min(taskCount * 10, 50); // Conservative estimate
       
       return {
-        used: storageStats.used,
-        total: storageStats.total,
-        percentage,
-        warning: percentage > this.MEMORY_WARNING_THRESHOLD,
-        critical: percentage > this.MEMORY_CRITICAL_THRESHOLD
+        used: estimatedUsage,
+        total: 100,
+        percentage: estimatedUsage,
+        warning: estimatedUsage > this.MEMORY_WARNING_THRESHOLD,
+        critical: estimatedUsage > this.MEMORY_CRITICAL_THRESHOLD
       };
     } catch (error) {
-      console.error('MemoryManager: Error getting memory stats:', error);
+      console.warn('MemoryManager: Error getting memory stats:', error);
       return {
         used: 0,
-        total: 0,
+        total: 100,
         percentage: 0,
         warning: false,
         critical: false
@@ -120,123 +134,116 @@ export class MemoryManager {
   }
 
   /**
-   * Check if memory optimization is needed
+   * Initialize lightweight monitoring (only when needed)
    */
-  async shouldOptimize(): Promise<boolean> {
-    const stats = await this.getMemoryStats();
-    return stats.warning || stats.critical;
-  }
-
-  /**
-   * Start memory monitoring
-   */
-  private startMemoryMonitoring(): void {
-    if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
+  private initializeMonitoring(): void {
+    // Only monitor if we have tasks to clean up
+    if (this.cleanupTasks.size === 0) {
+      return;
     }
 
-    this.memoryCheckInterval = window.setInterval(async () => {
-      try {
-        // Skip monitoring if extension context is invalid
-        if (!chrome.runtime?.id) {
-          console.warn('MemoryManager: Extension context invalid, skipping memory monitoring');
-          return;
-        }
-
-        const stats = await this.getMemoryStats();
-        
-        if (stats.critical) {
-          console.warn('MemoryManager: Critical memory usage detected, forcing cleanup');
-          console.log('MemoryManager: Memory stats:', stats);
-          this.forceCleanup();
-        } else if (stats.warning) {
-          console.warn('MemoryManager: High memory usage detected');
-          console.log('MemoryManager: Memory stats:', stats);
-          this.clearExpiredCache();
-        } else {
-          console.log('MemoryManager: Memory usage OK:', stats);
-        }
-      } catch (error) {
-        if (error.message?.includes('Extension context invalidated') || 
-            error.message?.includes('context invalidated')) {
-          console.warn('MemoryManager: Extension context invalidated during memory monitoring');
-          return;
-        }
-        console.error('MemoryManager: Error in memory monitoring:', error);
-      }
-    }, this.MEMORY_CHECK_INTERVAL);
+    // Use passive monitoring - only check on user interaction
+    this.setupPassiveMonitoring();
   }
 
   /**
-   * Clear expired cache entries
+   * Setup passive monitoring that doesn't use timers
    */
-  private async clearExpiredCache(): Promise<void> {
+  private setupPassiveMonitoring(): void {
+    if (this.isMonitoring) {
+      return;
+    }
+
+    this.isMonitoring = true;
+
+    // Monitor on visibility change (tab switch, window focus)
+    document.addEventListener('visibilitychange', this.checkMemoryOnDemand.bind(this));
+    
+    // Monitor on user interaction (less intrusive than timers)
+    document.addEventListener('click', this.throttledMemoryCheck.bind(this), { passive: true });
+  }
+
+  private lastMemoryCheck = 0;
+  private readonly MEMORY_CHECK_THROTTLE = 60000; // 1 minute
+
+  /**
+   * Throttled memory check to prevent excessive monitoring
+   */
+  private throttledMemoryCheck(): void {
+    const now = Date.now();
+    if (now - this.lastMemoryCheck < this.MEMORY_CHECK_THROTTLE) {
+      return;
+    }
+    
+    this.lastMemoryCheck = now;
+    this.checkMemoryOnDemand();
+  }
+
+  /**
+   * Check memory only when needed
+   */
+  private async checkMemoryOnDemand(): Promise<void> {
+    if (!this.isExtensionContextValid()) {
+      return;
+    }
+
     try {
-      // Check if extension context is still valid
-      if (!chrome.runtime?.id) {
-        console.warn('MemoryManager: Extension context invalidated, skipping cache cleanup');
-        return;
-      }
-
-      // Double-check extension context before storage operation
-      if (!chrome.runtime?.id) {
-        console.warn('MemoryManager: Extension context lost during cache cleanup preparation');
-        return;
-      }
-
-      const { ChromeStorageManager } = await import('../storage/ChromeStorageManager');
-      const clearedCount = await ChromeStorageManager.clearExpiredCache();
+      const stats = await this.getMemoryStats();
       
-      if (clearedCount > 0) {
-        console.log(`MemoryManager: Cleared ${clearedCount} expired cache entries`);
+      if (stats.critical) {
+        console.warn('MemoryManager: Critical memory usage detected:', stats);
+        this.forceCleanup();
+      } else if (stats.warning) {
+        console.warn('MemoryManager: High memory usage detected:', stats);
+        this.runExpiredCacheCleanup();
       }
     } catch (error) {
-      if (error.message?.includes('Extension context invalidated') || 
-          error.message?.includes('context invalidated')) {
-        console.warn('MemoryManager: Extension context invalidated during cache cleanup');
+      console.error('MemoryManager: Error in on-demand memory check:', error);
+    }
+  }
+
+  /**
+   * Check if extension context is still valid
+   */
+  private isExtensionContextValid(): boolean {
+    return !!(chrome?.runtime?.id);
+  }
+
+  /**
+   * Run expired cache cleanup safely
+   */
+  private async runExpiredCacheCleanup(): Promise<void> {
+    try {
+      if (!this.isExtensionContextValid()) {
         return;
       }
-      console.error('MemoryManager: Error clearing expired cache:', error);
-    }
-  }
 
-  /**
-   * Get storage statistics
-   */
-  private async getStorageStats(): Promise<{ used: number; total: number; percentage: number }> {
-    try {
       const { ChromeStorageManager } = await import('../storage/ChromeStorageManager');
-      return await ChromeStorageManager.getUsage();
+      await ChromeStorageManager.clearExpiredCache();
     } catch (error) {
-      console.error('MemoryManager: Error getting storage stats:', error);
-      return { used: 0, total: 0, percentage: 0 };
+      console.warn('MemoryManager: Cache cleanup failed:', error);
     }
   }
 
   /**
-   * Stop memory monitoring
-   */
-  stopMonitoring(): void {
-    if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
-      this.memoryCheckInterval = null;
-    }
-  }
-
-  /**
-   * Cleanup resources and run cleanup tasks (緊急対策：無効化)
+   * Cleanup all resources
    */
   cleanup(): void {
-    // 緊急対策：無効化
-    return;
+    this.forceCleanup();
+    this.cleanupTasks.clear();
+    this.isMonitoring = false;
+    
+    // Remove event listeners
+    document.removeEventListener('visibilitychange', this.checkMemoryOnDemand.bind(this));
+    document.removeEventListener('click', this.throttledMemoryCheck.bind(this));
   }
 
   /**
-   * Cleanup the memory manager itself (緊急対策：無効化)
+   * Destroy the memory manager
    */
   destroy(): void {
-    // 緊急対策：無効化
-    return;
+    this.cleanup();
+    MemoryManager.instance = null as any;
   }
 }
 

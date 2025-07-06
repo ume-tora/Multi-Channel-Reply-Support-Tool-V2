@@ -165,12 +165,97 @@ export class ChromeStorageManager {
   }
 
   /**
-   * Clear expired cache entries
+   * Clear expired cache entries safely with proper error handling
    */
   static async clearExpiredCache(): Promise<number> {
-    // 緊急対策：キャッシュクリアを完全に無効化
-    console.log('ChromeStorageManager: Emergency mode - cache cleanup disabled');
-    return 0;
+    try {
+      // Multiple safety checks for extension context
+      if (!this.isExtensionContextValid()) {
+        return 0;
+      }
+
+      let allData: Record<string, any>;
+      try {
+        allData = await chrome.storage.local.get();
+      } catch (storageError) {
+        console.warn('ChromeStorageManager: Storage access failed during cache cleanup');
+        return 0;
+      }
+
+      const now = Date.now();
+      const keysToRemove: string[] = [];
+
+      // Identify expired cache entries
+      for (const [key, value] of Object.entries(allData)) {
+        if (this.isCacheKey(key) && this.isCacheItemExpired(value, now)) {
+          keysToRemove.push(key);
+        }
+      }
+
+      // Remove expired entries in batches for better performance
+      if (keysToRemove.length > 0) {
+        try {
+          await chrome.storage.local.remove(keysToRemove);
+          console.log(`ChromeStorageManager: Cleared ${keysToRemove.length} expired cache entries`);
+        } catch (removeError) {
+          console.warn('ChromeStorageManager: Failed to remove expired entries:', removeError);
+          return 0;
+        }
+      }
+
+      return keysToRemove.length;
+    } catch (error) {
+      if (this.isExtensionContextError(error)) {
+        console.warn('ChromeStorageManager: Extension context invalidated during cache cleanup');
+        return 0;
+      }
+      console.error('ChromeStorageManager: Unexpected error during cache cleanup:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if extension context is valid
+   */
+  private static isExtensionContextValid(): boolean {
+    try {
+      return !!(chrome?.runtime?.id && chrome?.storage?.local);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a key is a cache key
+   */
+  private static isCacheKey(key: string): boolean {
+    return key.startsWith(this.CACHE_PREFIX);
+  }
+
+  /**
+   * Check if a cache item is expired
+   */
+  private static isCacheItemExpired(value: any, now: number): boolean {
+    return (
+      value &&
+      typeof value === 'object' &&
+      'expiresAt' in value &&
+      typeof value.expiresAt === 'number' &&
+      value.expiresAt < now
+    );
+  }
+
+  /**
+   * Check if error is related to extension context
+   */
+  private static isExtensionContextError(error: any): boolean {
+    if (!error?.message) return false;
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('extension context invalidated') ||
+      message.includes('context invalidated') ||
+      message.includes('extension is disabled')
+    );
   }
 
   /**
