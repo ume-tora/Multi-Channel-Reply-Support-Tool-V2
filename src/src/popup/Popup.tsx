@@ -5,37 +5,59 @@ const SettingsForm = lazy(() => import('../components/features/SettingsForm').th
 
 export const Popup: React.FC = () => {
   return (
-    <div className="w-96 max-h-96 overflow-y-auto">
-      <div className="bg-white">
-        {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="text-2xl">🤖</div>
-            <div>
-              <h1 className="text-lg font-semibold">Multi Channel Reply</h1>
-              <p className="text-blue-100 text-sm">AI-Powered Reply Assistant</p>
-            </div>
+    <div style={{
+      width: '384px',
+      maxHeight: '384px',
+      overflowY: 'auto',
+      backgroundColor: '#ffffff'
+    }}>
+      {/* ヘッダー */}
+      <div style={{
+        background: 'linear-gradient(to right, #4F46E5, #7C3AED)',
+        color: 'white',
+        padding: '16px 24px'
+      }}>
+        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+          <div style={{fontSize: '24px'}}>🤖</div>
+          <div>
+            <h1 style={{fontSize: '18px', fontWeight: '600', margin: '0'}}>Multi Channel Reply</h1>
+            <p style={{color: '#C7D2FE', fontSize: '14px', margin: '4px 0 0 0'}}>AI-Powered Reply Assistant</p>
           </div>
         </div>
+      </div>
 
-        {/* メインコンテンツ */}
-        <div className="p-4">
-          <Suspense fallback={
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">設定を読み込み中...</span>
-            </div>
-          }>
-            <SettingsForm />
-          </Suspense>
-        </div>
+      {/* メインコンテンツ */}
+      <div style={{padding: '16px 24px'}}>
+        <Suspense fallback={
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0'}}>
+            <div style={{
+              animation: 'spin 1s linear infinite',
+              borderRadius: '50%',
+              height: '24px',
+              width: '24px',
+              borderBottom: '2px solid #4F46E5'
+            }}></div>
+            <span style={{marginLeft: '8px', color: '#6B7280'}}>設定を読み込み中...</span>
+          </div>
+        }>
+          <SettingsForm />
+        </Suspense>
+      </div>
 
-        {/* フッター */}
-        <div className="border-t bg-gray-50 p-3 text-center">
-          <p className="text-xs text-gray-500">
-            Version 0.1.0 | Made with ❤️ for productivity
-          </p>
-        </div>
+      {/* フッター */}
+      <div style={{
+        borderTop: '1px solid #E5E7EB',
+        backgroundColor: '#F9FAFB',
+        padding: '12px 24px',
+        textAlign: 'center'
+      }}>
+        <p style={{
+          fontSize: '12px',
+          color: '#6B7280',
+          margin: '0'
+        }}>
+          Version 0.1.0 | Made with ❤️ for productivity
+        </p>
       </div>
     </div>
   );

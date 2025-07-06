@@ -123,6 +123,9 @@ const getConfig = (target: string) => {
 
 export default defineConfig({
   plugins: BUILD_TARGET === 'popup' ? [react(), extensionBuildPlugin()] : [],
+  css: {
+    postcss: './postcss.config.js',
+  },
   define: BUILD_TARGET === 'content' ? {
     'process.env.NODE_ENV': '"production"',
     'process.env': '{}',

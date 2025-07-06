@@ -32,11 +32,11 @@ export const Input: React.FC<InputProps> = ({
   `.trim();
 
   return (
-    <div className="space-y-1">
+    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label style={{display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151'}}>
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span style={{color: '#EF4444', marginLeft: '4px'}}>*</span>}
         </label>
       )}
       <input
@@ -49,7 +49,7 @@ export const Input: React.FC<InputProps> = ({
         required={required}
       />
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p style={{fontSize: '14px', color: '#DC2626', margin: '0'}}>{error}</p>
       )}
     </div>
   );
