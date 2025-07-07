@@ -3,13 +3,13 @@ export { GmailStrategy } from './gmail';
 export { GmailSimpleStrategy } from './gmail-simple';
 export { ChatworkStrategy } from './chatwork';
 export { GoogleChatSimpleStrategy } from './google-chat-simple';
-export { LineOfficialAccountStrategy } from './line-official-account';
+export { LineOfficialAccountSimpleStrategy as LineOfficialAccountStrategy } from './line-official-account';
 
 import type { ServiceStrategy } from './interface';
 import { GmailSimpleStrategy } from './gmail-simple';
 import { ChatworkStrategy } from './chatwork';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';
-import { LineOfficialAccountStrategy } from './line-official-account';
+import { LineOfficialAccountSimpleStrategy } from './line-official-account';
 
 export function createServiceStrategy(url: string): ServiceStrategy | null {
   const urlObj = new URL(url);
@@ -38,8 +38,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
     
     case 'manager.line.biz':
     case 'chat.line.biz':
-      console.log('🟢 LINE Official Account detected');
-      return new LineOfficialAccountStrategy();
+      console.log('🟢 LINE Official Account detected (refactored)');
+      return new LineOfficialAccountSimpleStrategy();
     
     default:
       console.warn(`Unsupported service: ${hostname}`);

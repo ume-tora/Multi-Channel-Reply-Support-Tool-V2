@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Chrome extension called "Multi Channel Reply Support Tool" that provides AI-powered reply suggestions across multiple communication channels (Gmail, Chatwork, Google Chat). The tool generates contextual replies using Google's Gemini API and provides a unified interface for managing customer support responses.
+This is a Chrome extension called "Multi Channel Reply Support Tool" that provides AI-powered reply suggestions across multiple communication channels (Gmail, Chatwork, Google Chat, LINE Official Account). The tool generates contextual replies using Google's Gemini API and provides a unified interface for managing customer support responses.
 
 ## Technology Stack
 
@@ -72,7 +72,7 @@ The extension uses Manifest V3 with the following key permissions:
 - `activeTab` - Access current tab content
 - `storage` - Local storage for settings and cache
 - `scripting` - Inject content scripts
-- Host permissions for Gmail, Chatwork, and Google Chat domains
+- Host permissions for Gmail, Chatwork, Google Chat, and LINE Official Account domains
 
 ## UI/UX Design Principles
 
@@ -94,6 +94,7 @@ The extension is designed with modularity to support multiple communication chan
 - **Gmail**: Email thread context extraction
 - **Chatwork**: Chat room message parsing
 - **Google Chat**: Conversation thread analysis
+- **LINE Official Account**: Customer support chat on LINE Manager
 - **Future channels**: Slack, Facebook Messenger (planned)
 
 ## Testing Strategy
