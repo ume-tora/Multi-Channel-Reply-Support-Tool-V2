@@ -105,7 +105,7 @@ export class UIInjector {
 
     // ボタンのスタイル設定
     button.style.cssText = `
-      background-color: #3b82f6;
+      background-color: #16a34a;
       color: white;
       border: none;
       border-radius: 6px;
@@ -121,11 +121,11 @@ export class UIInjector {
 
     // ホバーエフェクト
     button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = '#2563eb';
+      button.style.backgroundColor = '#15803d';
     });
 
     button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = '#3b82f6';
+      button.style.backgroundColor = '#16a34a';
     });
 
     // クリックイベント
@@ -286,7 +286,7 @@ export class UIInjector {
           <button id="cancel-btn" style="background-color: #6b7280; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 14px; cursor: pointer;">
             キャンセル
           </button>
-          <button id="insert-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 14px; cursor: pointer;">
+          <button id="insert-btn" style="background-color: #16a34a; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 14px; cursor: pointer;">
             挿入
           </button>
         </div>
@@ -392,49 +392,70 @@ export class UIInjector {
       }
       
       .gemini-reply-btn {
-        background-color: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        background-color: #16a34a !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 6px 12px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: background-color 0.2s !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
       }
       
       .gemini-reply-btn:hover {
-        background-color: #2563eb;
+        background-color: #15803d !important;
       }
       
       .gemini-reply-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
       }
 
       /* 各サービスのUIとの調和を図るためのスタイル調整 */
       /* Gmail */
       .gmail .gemini-reply-btn {
-        background-color: #1a73e8;
-        font-family: 'Google Sans', Roboto, Arial, sans-serif;
+        background-color: #16a34a !important;
+        font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
       }
 
       /* Chatwork */
       .chatwork .gemini-reply-btn {
-        background-color: #ff6600;
+        background-color: #16a34a !important;
       }
 
       /* Google Chat */
       .google-chat .gemini-reply-btn {
-        background-color: #1a73e8;
-        font-family: 'Google Sans', Roboto, Arial, sans-serif;
+        background-color: #16a34a !important;
+        font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
       }
     `;
 
     document.head.appendChild(style);
+    
+    // 既存のボタンの色を強制的に変更
+    this.updateExistingButtonColors();
+  }
+
+  private updateExistingButtonColors(): void {
+    // 既存のAIボタンを見つけて色を変更
+    const buttons = document.querySelectorAll('.gemini-reply-btn, [class*="gemini"], [class*="ai-reply"]');
+    buttons.forEach((button: Element) => {
+      const htmlButton = button as HTMLElement;
+      htmlButton.style.setProperty('background-color', '#16a34a', 'important');
+      
+      // ホバーイベントも再設定
+      htmlButton.addEventListener('mouseenter', () => {
+        htmlButton.style.setProperty('background-color', '#15803d', 'important');
+      });
+      
+      htmlButton.addEventListener('mouseleave', () => {
+        htmlButton.style.setProperty('background-color', '#16a34a', 'important');
+      });
+    });
   }
 
   // クリーンアップ

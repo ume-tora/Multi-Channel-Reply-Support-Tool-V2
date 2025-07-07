@@ -72,7 +72,7 @@ class ContentScriptManager {
         align-items: center;
         gap: 6px;
         padding: 8px 12px;
-        background: linear-gradient(135deg, #10B981, #059669);
+        background: linear-gradient(135deg, #16a34a, #15803d);
         color: white;
         border: none;
         border-radius: 6px;
@@ -87,7 +87,7 @@ class ContentScriptManager {
       }
       
       .gemini-reply-button:hover {
-        background: linear-gradient(135deg, #059669, #047857);
+        background: linear-gradient(135deg, #15803d, #14532d);
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
       }
@@ -191,12 +191,12 @@ class ContentScriptManager {
       }
       
       .gemini-reply-btn-primary {
-        background: linear-gradient(135deg, #10B981, #059669);
+        background: linear-gradient(135deg, #16a34a, #15803d);
         color: white;
       }
       
       .gemini-reply-btn-primary:hover:not(:disabled) {
-        background: linear-gradient(135deg, #059669, #047857);
+        background: linear-gradient(135deg, #15803d, #14532d);
       }
       
       .gemini-reply-btn-secondary {
@@ -305,9 +305,9 @@ class ContentScriptManager {
       margin: 8px !important;
       border-radius: 8px !important;
       cursor: pointer !important;
-      background: linear-gradient(135deg, #FF4444, #CC0000) !important;
+      background: linear-gradient(135deg, #16a34a, #15803d) !important;
       color: white !important;
-      border: 2px solid #FF0000 !important;
+      border: 2px solid #16a34a !important;
       font-size: 14px !important;
       font-weight: bold !important;
       transition: all 0.2s ease !important;
@@ -321,12 +321,12 @@ class ContentScriptManager {
     button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
     
     button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(135deg, #CC0000, #990000) !important';
+      button.style.background = 'linear-gradient(135deg, #15803d, #14532d) !important';
       button.style.transform = 'scale(1.1) !important';
     });
     
     button.addEventListener('mouseleave', () => {
-      button.style.background = 'linear-gradient(135deg, #FF4444, #CC0000) !important';
+      button.style.background = 'linear-gradient(135deg, #16a34a, #15803d) !important';
       button.style.transform = 'scale(1) !important';
     });
     
@@ -365,7 +365,7 @@ class ContentScriptManager {
       margin: 4px;
       border-radius: 6px;
       cursor: pointer;
-      background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+      background: linear-gradient(135deg, #16a34a, #15803d) !important;
       color: white !important;
       border: none !important;
       font-size: 14px !important;
@@ -381,12 +381,12 @@ class ContentScriptManager {
     button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
     
     button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(135deg, #c0392b, #a93226) !important';
+      button.style.background = 'linear-gradient(135deg, #15803d, #14532d) !important';
       button.style.transform = 'scale(1.05)';
     });
     
     button.addEventListener('mouseleave', () => {
-      button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b) !important';
+      button.style.background = 'linear-gradient(135deg, #16a34a, #15803d) !important';
       button.style.transform = 'scale(1)';
     });
     
