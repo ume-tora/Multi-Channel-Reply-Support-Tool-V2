@@ -16,25 +16,32 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
    * LINE Manager画面のメッセージ入力エリア周辺にボタンを配置
    */
   async findInsertionPoint(): Promise<HTMLElement | null> {
-    console.log('🔍 LINE Official Account: Looking for insertion point...');
+    console.log('🔍 LINE Official Account: Starting insertion point search...');
+    console.log(`📍 Current URL: ${window.location.href}`);
+    console.log(`🌐 Hostname: ${window.location.hostname}`);
+    console.log(`📂 Pathname: ${window.location.pathname}`);
     
     // ホーム画面や設定画面ではスキップ
     if (this.isOnNonChatPage()) {
-      console.log('🏠 Not on chat page, skipping');
+      console.log('🏠 Not on chat page, skipping button injection');
       return null;
     }
+
+    console.log('💬 On chat page, proceeding with injection...');
 
     // DOM要素の読み込み待機
     await this.waitForChatInterface();
 
     // 1. メッセージ入力エリアの親要素を探す
+    console.log('🔍 Step 1: Looking for message input container...');
     const inputContainer = this.findMessageInputContainer();
     if (inputContainer) {
-      console.log('✅ Found message input container');
+      console.log('✅ Found message input container, using it');
       return inputContainer;
     }
 
     // 2. チャットエリア内にフローティングボタンとして配置
+    console.log('🔍 Step 2: Looking for chat area...');
     const chatArea = this.findChatArea();
     if (chatArea) {
       console.log('✅ Found chat area, creating floating container');
@@ -42,6 +49,7 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
     }
 
     // 3. 最終的にbodyにフローティング配置
+    console.log('🔍 Step 3: Using fallback floating container');
     console.log('🎈 Creating global floating button container');
     return this.createFloatingContainer();
   }
@@ -88,38 +96,46 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
    * メッセージ入力エリアのコンテナを探す
    */
   private findMessageInputContainer(): HTMLElement | null {
+    console.log('🔍 Looking for message input container...');
+    
     const selectors = [
-      // LINE Manager specific selectors
-      '[data-testid="message-input"]',
-      '[data-testid="text-input"]', 
-      '[class*="MessageInput"]',
-      '[class*="TextInput"]',
-      '[class*="ChatInput"]',
-      
-      // Generic input container patterns
+      // LINE Manager specific selectors based on actual UI
+      'textarea[placeholder*="Enter"]',
+      'textarea[placeholder*="送信"]',
+      'textarea[placeholder*="改行"]',
       'div[contenteditable="true"]',
-      'textarea[placeholder*="メッセージ"]',
-      'input[placeholder*="メッセージ"]',
+      'input[type="text"]',
+      'textarea',
       
-      // Parent containers of inputs
-      'div:has(> [contenteditable="true"])',
-      'div:has(> textarea)',
-      'div:has(> input[type="text"])'
+      // Container selectors
+      'form',
+      'div[class*="input"]',
+      'div[class*="message"]',
+      'div[class*="chat"]',
+      'div[class*="compose"]'
     ];
 
     for (const selector of selectors) {
       try {
-        const element = document.querySelector(selector) as HTMLElement;
-        if (element && this.isValidInputContainer(element)) {
-          console.log(`✅ Found input container: ${selector}`);
-          return element.parentElement || element;
+        const elements = document.querySelectorAll(selector);
+        console.log(`Found ${elements.length} elements for selector: ${selector}`);
+        
+        for (const element of Array.from(elements)) {
+          const htmlElement = element as HTMLElement;
+          if (this.isValidInputContainer(htmlElement)) {
+            console.log(`✅ Found valid input container: ${selector}`);
+            // 親要素を返すか、要素自体を返すかを判断
+            const container = htmlElement.parentElement || htmlElement;
+            return container;
+          }
         }
       } catch (error) {
-        // セレクタエラーは無視して続行
+        console.log(`❌ Selector error for ${selector}:`, error);
         continue;
       }
     }
 
+    console.log('❌ No input container found');
     return null;
   }
 
@@ -172,28 +188,34 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
    * フローティングコンテナを作成
    */
   private createFloatingContainer(): HTMLElement {
+    console.log('🎈 Creating floating container for LINE...');
+    
     // 既存のフローティングコンテナがあれば再利用
     const existingContainer = document.getElementById('line-floating-container');
     if (existingContainer) {
+      console.log('♻️ Reusing existing floating container');
       return existingContainer;
     }
 
     const container = document.createElement('div');
     container.id = 'line-floating-container';
+    container.innerHTML = '<div style="color: #00c300; font-size: 12px; margin-bottom: 8px;">LINE AI Assistant</div>';
     container.style.cssText = `
       position: fixed !important;
-      bottom: 100px !important;
+      bottom: 120px !important;
       right: 40px !important;
       z-index: 999999 !important;
       background: white !important;
       border: 2px solid #00c300 !important;
       border-radius: 12px !important;
-      padding: 12px !important;
-      box-shadow: 0 8px 24px rgba(0, 195, 0, 0.3) !important;
-      max-width: 160px !important;
+      padding: 16px !important;
+      box-shadow: 0 8px 24px rgba(0, 195, 0, 0.4) !important;
+      min-width: 180px !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     `;
 
     document.body.appendChild(container);
+    console.log('✅ Floating container created and added to body');
     return container;
   }
 
@@ -430,9 +452,13 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
    * メッセージ入力欄を探す
    */
   private findMessageInput(): HTMLElement | null {
+    console.log('🔍 Looking for message input field...');
+    
     const inputSelectors = [
-      '[data-testid="message-input"]',
-      '[data-testid="text-input"]',
+      // LINE specific selectors based on actual UI
+      'textarea[placeholder*="Enter"]',
+      'textarea[placeholder*="送信"]', 
+      'textarea[placeholder*="改行"]',
       'div[contenteditable="true"]',
       'textarea[placeholder*="メッセージ"]',
       'input[placeholder*="メッセージ"]',
@@ -441,13 +467,19 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
     ];
 
     for (const selector of inputSelectors) {
-      const element = document.querySelector(selector) as HTMLElement;
-      if (element && this.isValidInputContainer(element)) {
-        console.log(`✅ Found message input: ${selector}`);
-        return element;
+      const elements = document.querySelectorAll(selector);
+      console.log(`Found ${elements.length} elements for input selector: ${selector}`);
+      
+      for (const element of Array.from(elements)) {
+        const htmlElement = element as HTMLElement;
+        if (this.isValidInputContainer(htmlElement)) {
+          console.log(`✅ Found valid message input: ${selector}`);
+          return htmlElement;
+        }
       }
     }
 
+    console.log('❌ No valid message input found');
     return null;
   }
 
@@ -471,4 +503,67 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
     const match = window.location.pathname.match(/\/chat\/([^\/]+)/);
     return match ? match[1] : null;
   }
+
+  /**
+   * デバッグ用：DOM構造をコンソールに出力
+   * ブラウザのコンソールで window.lineDOMDebug() を実行
+   */
+  debugDOMStructure(): void {
+    console.log('🔍 LINE DOM Debug Information:');
+    console.log('URL:', window.location.href);
+    console.log('Hostname:', window.location.hostname);
+    console.log('Pathname:', window.location.pathname);
+    
+    console.log('\n📝 All textarea elements:');
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach((ta, index) => {
+      console.log(`Textarea ${index}:`, {
+        placeholder: ta.placeholder,
+        value: ta.value,
+        visible: ta.offsetHeight > 0,
+        element: ta
+      });
+    });
+    
+    console.log('\n📝 All input elements:');
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach((input, index) => {
+      console.log(`Input ${index}:`, {
+        type: input.type,
+        placeholder: input.placeholder,
+        value: input.value,
+        visible: input.offsetHeight > 0,
+        element: input
+      });
+    });
+    
+    console.log('\n📝 All contenteditable elements:');
+    const editables = document.querySelectorAll('[contenteditable="true"]');
+    editables.forEach((editable, index) => {
+      console.log(`Editable ${index}:`, {
+        textContent: editable.textContent,
+        innerHTML: editable.innerHTML,
+        visible: (editable as HTMLElement).offsetHeight > 0,
+        element: editable
+      });
+    });
+    
+    console.log('\n🎯 Current button injection status:');
+    console.log('Button exists:', !!document.getElementById(LineOfficialAccountStrategy.BUTTON_ID));
+    console.log('Floating container exists:', !!document.getElementById('line-floating-container'));
+  }
+}
+
+// デバッグ用のグローバル関数をウィンドウに追加
+declare global {
+  interface Window {
+    lineDOMDebug: () => void;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.lineDOMDebug = () => {
+    const strategy = new LineOfficialAccountStrategy();
+    strategy.debugDOMStructure();
+  };
 }

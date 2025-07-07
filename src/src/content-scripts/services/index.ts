@@ -37,6 +37,7 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
       return new GoogleChatSimpleStrategy();
     
     case 'manager.line.biz':
+    case 'chat.line.biz':
       console.log('🟢 LINE Official Account detected');
       return new LineOfficialAccountStrategy();
     
