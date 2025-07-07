@@ -187,7 +187,7 @@ export const SettingsForm: React.FC = () => {
         </div>
       </div>
 
-      <div style={{borderTop: '1px solid #E5E7EB', paddingTop: '20px', paddingBottom: '8px'}}>
+      <div style={{borderTop: '1px solid #E5E7EB', paddingTop: '20px', paddingBottom: '0'}}>
         <h3 style={{fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 16px 0', lineHeight: '1.5'}}>注意事項</h3>
         <div style={{display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: '#4B5563', lineHeight: '1.6'}}>
           <p style={{margin: '0', paddingLeft: '4px'}}>• APIキーはブラウザ内に安全に保存され、外部に送信されません</p>

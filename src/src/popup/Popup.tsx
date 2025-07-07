@@ -7,9 +7,10 @@ export const Popup: React.FC = () => {
   return (
     <div style={{
       width: '384px',
-      maxHeight: '384px',
-      overflowY: 'auto',
-      backgroundColor: '#ffffff'
+      minHeight: 'fit-content',
+      backgroundColor: '#ffffff',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       {/* ヘッダー */}
       <div style={{
@@ -27,7 +28,11 @@ export const Popup: React.FC = () => {
       </div>
 
       {/* メインコンテンツ */}
-      <div style={{padding: '16px 24px'}}>
+      <div style={{
+        padding: '16px 24px 0 24px',
+        flex: '1',
+        minHeight: 'fit-content'
+      }}>
         <Suspense fallback={
           <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0'}}>
             <div style={{
@@ -49,7 +54,9 @@ export const Popup: React.FC = () => {
         borderTop: '1px solid #E5E7EB',
         backgroundColor: '#F9FAFB',
         padding: '12px 24px',
-        textAlign: 'center'
+        textAlign: 'center',
+        marginTop: '12px',
+        flexShrink: 0
       }}>
         <p style={{
           fontSize: '12px',
