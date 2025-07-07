@@ -5,7 +5,6 @@ export { ChatworkStrategy } from './chatwork';
 export { GoogleChatSimpleStrategy } from './google-chat-simple';
 
 import type { ServiceStrategy } from './interface';
-import { GmailStrategy } from './gmail';
 import { GmailSimpleStrategy } from './gmail-simple';
 import { ChatworkStrategy } from './chatwork';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';

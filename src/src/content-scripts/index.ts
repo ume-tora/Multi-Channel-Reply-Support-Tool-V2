@@ -2,6 +2,7 @@ import { createServiceStrategy } from './services';
 import type { ServiceStrategy } from '../shared/types';
 import { memoryManager } from '../shared/performance/MemoryManager';
 import { DragDropManager } from '../shared/ui/DragDropManager';
+import { ButtonFactory } from '../shared/ui/ButtonFactory';
 class ContentScriptManager {
   private strategy: ServiceStrategy | null = null;
   private observer: MutationObserver | null = null;
@@ -290,50 +291,17 @@ class ContentScriptManager {
   private injectGmailButton(container: HTMLElement, buttonId: string): void {
     console.log('🎨 Injecting Gmail button with drag & drop...');
     
-    const button = document.createElement('button');
-    button.id = buttonId;
-    button.setAttribute('role', 'button');
-    button.setAttribute('aria-label', 'AI返信生成');
-    button.className = 'gemini-reply-button';
-    
-    // 🚨 緊急修正: より目立つスタイル
-    button.style.cssText = `
-      display: block !important;
-      width: 140px !important;
-      height: 40px !important;
-      padding: 8px 16px !important;
-      margin: 8px !important;
-      border-radius: 8px !important;
-      cursor: pointer !important;
-      background: linear-gradient(135deg, #16a34a, #15803d) !important;
-      color: white !important;
-      border: 2px solid #16a34a !important;
-      font-size: 14px !important;
-      font-weight: bold !important;
-      transition: all 0.2s ease !important;
-      z-index: 999999 !important;
-      position: fixed !important;
-      box-shadow: 0 4px 12px rgba(255, 68, 68, 0.5) !important;
-      text-align: center !important;
-    `;
-    
-    button.innerHTML = '🤖 AI返信生成';
-    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
-    
-    button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(135deg, #15803d, #14532d) !important';
-      button.style.transform = 'scale(1.1) !important';
-    });
-    
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'linear-gradient(135deg, #16a34a, #15803d) !important';
-      button.style.transform = 'scale(1) !important';
-    });
-    
-    button.addEventListener('click', () => {
-      console.log('🚀 Gmail button clicked!');
-      this.handleButtonClick();
-    });
+    const button = ButtonFactory.createServiceButton(
+      'gmail',
+      () => {
+        console.log('🚀 Gmail button clicked!');
+        this.handleButtonClick();
+      },
+      {
+        id: buttonId,
+        title: 'AI返信生成 - ドラッグ&ドロップ対応'
+      }
+    );
     
     container.appendChild(button);
     
@@ -350,47 +318,14 @@ class ContentScriptManager {
   }
 
   private injectChatworkButton(container: HTMLElement, buttonId: string): void {
-    const button = document.createElement('button');
-    button.id = buttonId;
-    button.setAttribute('role', 'button');
-    button.setAttribute('aria-label', 'AI返信生成');
-    button.className = 'gemini-reply-button';
-    
-    button.style.cssText = `
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 8px 12px;
-      margin: 4px;
-      border-radius: 6px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #16a34a, #15803d) !important;
-      color: white !important;
-      border: none !important;
-      font-size: 14px !important;
-      font-weight: 500 !important;
-      transition: all 0.2s ease;
-      z-index: 9999 !important;
-      position: fixed !important;
-      box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3) !important;
-      flex-shrink: 0 !important;
-    `;
-    
-    button.innerHTML = '🤖 AI返信生成';
-    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
-    
-    button.addEventListener('mouseenter', () => {
-      button.style.background = 'linear-gradient(135deg, #15803d, #14532d) !important';
-      button.style.transform = 'scale(1.05)';
-    });
-    
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'linear-gradient(135deg, #16a34a, #15803d) !important';
-      button.style.transform = 'scale(1)';
-    });
-    
-    button.addEventListener('click', () => this.handleButtonClick());
+    const button = ButtonFactory.createServiceButton(
+      'chatwork',
+      () => this.handleButtonClick(),
+      {
+        id: buttonId,
+        title: 'AI返信生成 - ドラッグ&ドロップ対応'
+      }
+    );
     
     container.appendChild(button);
     
@@ -407,17 +342,16 @@ class ContentScriptManager {
   }
 
   private injectStandardButton(container: HTMLElement, buttonId: string): void {
-    const button = document.createElement('button');
-    button.id = buttonId;
-    button.className = 'gemini-reply-button';
-    button.innerHTML = '🤖 AI返信生成';
-    button.title = 'AI返信生成 - ドラッグ&ドロップ対応';
+    if (!this.strategy) return;
     
-    // 標準ボタンもfixedポジションに設定
-    button.style.position = 'fixed';
-    button.style.zIndex = '9999';
-    
-    button.addEventListener('click', () => this.handleButtonClick());
+    const button = ButtonFactory.createServiceButton(
+      this.strategy.getServiceName(),
+      () => this.handleButtonClick(),
+      {
+        id: buttonId,
+        title: 'AI返信生成 - ドラッグ&ドロップ対応'
+      }
+    );
     
     container.appendChild(button);
     
@@ -427,10 +361,10 @@ class ContentScriptManager {
       dragOpacity: 0.8,
       snapToGrid: true,
       gridSize: 20,
-      storageKey: `${this.strategy?.getServiceName()}-ai-button-position`
+      storageKey: `${this.strategy.getServiceName()}-ai-button-position`
     });
     
-    console.log(`✅ Standard button with drag & drop injected for ${this.strategy?.getServiceName()}`);
+    console.log(`✅ Standard button with drag & drop injected for ${this.strategy.getServiceName()}`);
   }
 
   private async handleButtonClick(): Promise<void> {

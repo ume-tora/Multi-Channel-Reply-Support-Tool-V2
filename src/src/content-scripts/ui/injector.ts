@@ -1,4 +1,6 @@
 import type { ServiceStrategy } from '../services/interface';
+import { ButtonFactory } from '../../shared/ui/ButtonFactory';
+import { GeminiService } from '../../services/geminiService';
 
 export class UIInjector {
   private buttonElements: Map<string, HTMLElement> = new Map();
@@ -95,45 +97,15 @@ export class UIInjector {
   }
 
   private createReplyButton(strategy: ServiceStrategy): HTMLElement {
-    const button = document.createElement('button');
-    button.className = 'gemini-reply-btn';
-    button.title = 'AI返信案を生成';
-    button.innerHTML = `
-      <span style="font-size: 14px;">🤖</span>
-      <span>AI返信</span>
-    `;
-
-    // ボタンのスタイル設定
-    button.style.cssText = `
-      background-color: #16a34a;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    `;
-
-    // ホバーエフェクト
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = '#15803d';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = '#16a34a';
-    });
-
-    // クリックイベント
-    button.addEventListener('click', () => {
-      this.handleReplyButtonClick(strategy);
-    });
-
-    return button;
+    return ButtonFactory.createServiceButton(
+      strategy.getServiceName(),
+      () => this.handleReplyButtonClick(strategy),
+      {
+        className: 'gemini-reply-btn',
+        title: 'AI返信案を生成',
+        text: 'AI返信'
+      }
+    );
   }
 
   private async handleReplyButtonClick(strategy: ServiceStrategy): Promise<void> {
@@ -172,7 +144,7 @@ export class UIInjector {
     }
   }
 
-  private async generateReply(messages: any[]): Promise<string | null> {
+  private async generateReply(messages: Array<{ author: string; text: string }>): Promise<string | null> {
     // Chrome storage からAPI キーを取得
     const result = await chrome.storage.local.get(['geminiApiKey']);
     const apiKey = result.geminiApiKey;
@@ -182,44 +154,8 @@ export class UIInjector {
       return null;
     }
 
-    // メッセージを整形
-    const conversationText = messages.map(msg => `${msg.author}: ${msg.text}`).join('\n');
-    const prompt = `以下の会話に対して、適切で丁寧な返信を日本語で生成してください。簡潔で自然な返信をお願いします。\n\n${conversationText}`;
-
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        return data.candidates[0].content.parts[0].text;
-      }
-
-      throw new Error('Invalid response format');
-    } catch (error) {
-      console.error('Gemini API Error:', error);
-      throw error;
-    }
+    // 中央化されたGeminiServiceを使用
+    return await GeminiService.generateContextualReply(messages, { apiKey });
   }
 
   private showReplyModal(reply: string, strategy: ServiceStrategy): void {
