@@ -102,10 +102,10 @@ export class GeminiAPIClient {
     config: GeminiConfig,
     maxRetries: number = 3
   ): Promise<string> {
-    const timeouts = [60000, 120000, 180000]; // 60s, 120s, 180s
+    const timeouts = [3000, 3000, 3000]; // 3s, 3s, 3s (要件定義: 3秒以内)
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const timeout = timeouts[attempt - 1] || 180000;
+      const timeout = timeouts[attempt - 1] || 3000;
       console.log(`🤖 GeminiAPI: Attempt ${attempt}/${maxRetries} with ${timeout/1000}s timeout`);
 
       try {
