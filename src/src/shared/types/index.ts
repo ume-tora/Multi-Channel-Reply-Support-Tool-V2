@@ -34,7 +34,7 @@ export interface ConversationMessage extends ServiceMessage {
 
 // === Service Types ===
 
-export type ServiceType = 'gmail' | 'chatwork' | 'google-chat';
+export type ServiceType = 'gmail' | 'chatwork' | 'google-chat' | 'line-official-account';
 
 export interface ServiceStrategy {
   /** ボタンを挿入すべきDOM要素を見つける */
@@ -257,7 +257,7 @@ export function isGeminiMessage(obj: any): obj is GeminiMessage {
 }
 
 export function isServiceType(value: any): value is ServiceType {
-  return value === 'gmail' || value === 'chatwork' || value === 'google-chat';
+  return value === 'gmail' || value === 'chatwork' || value === 'google-chat' || value === 'line-official-account';
 }
 
 export function isApiError(obj: any): obj is ApiError {

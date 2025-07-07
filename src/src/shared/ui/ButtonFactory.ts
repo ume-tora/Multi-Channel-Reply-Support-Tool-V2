@@ -55,6 +55,17 @@ export class ButtonFactory {
     },
     'google-chat': {
       padding: '6px 12px'
+    },
+    'line-official-account': {
+      padding: '8px 16px',
+      borderRadius: '8px',
+      border: '2px solid #00c300',
+      backgroundColor: '#00c300',
+      fontWeight: 'bold',
+      boxShadow: '0 4px 12px rgba(0, 195, 0, 0.3)',
+      width: '140px',
+      height: '40px',
+      textAlign: 'center' as const
     }
   };
 
@@ -133,6 +144,13 @@ export class ButtonFactory {
         id: 'gemini-reply-button-google-chat',
         variant: 'google-chat' as const,
         text: 'AI返信生成',
+        draggable: true
+      },
+      'line-official-account': {
+        id: 'gemini-reply-button-line',
+        variant: 'line-official-account' as const,
+        text: 'AI返信生成',
+        position: 'fixed' as const,
         draggable: true
       }
     };

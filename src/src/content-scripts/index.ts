@@ -281,6 +281,8 @@ class ContentScriptManager {
       this.injectGmailButton(container, buttonId);
     } else if (serviceName === 'chatwork') {
       this.injectChatworkButton(container, buttonId);
+    } else if (serviceName === 'line-official-account') {
+      this.injectLineButton(container, buttonId);
     } else {
       this.injectStandardButton(container, buttonId);
     }
@@ -339,6 +341,35 @@ class ContentScriptManager {
     });
     
     console.log('✅ Chatwork button with drag & drop injected successfully');
+  }
+
+  private injectLineButton(container: HTMLElement, buttonId: string): void {
+    console.log('🟢 Injecting LINE Official Account button with drag & drop...');
+    
+    const button = ButtonFactory.createServiceButton(
+      'line-official-account',
+      () => {
+        console.log('🟢 LINE button clicked!');
+        this.handleButtonClick();
+      },
+      {
+        id: buttonId,
+        title: 'AI返信生成 - LINE公式アカウント対応'
+      }
+    );
+    
+    container.appendChild(button);
+    
+    // ドラッグ&ドロップ機能を追加
+    this.dragDropManager = new DragDropManager(button, {
+      constrainToViewport: true,
+      dragOpacity: 0.8,
+      snapToGrid: true,
+      gridSize: 20,
+      storageKey: 'line-ai-button-position'
+    });
+    
+    console.log('✅ LINE button with drag & drop injected successfully');
   }
 
   private injectStandardButton(container: HTMLElement, buttonId: string): void {

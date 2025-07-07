@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Multi Channel Reply Support Tool",
   "version": "0.1.0",
-  "description": "Provides AI-powered reply assistance on Gmail, Chatwork, and Google Chat.",
+  "description": "Provides AI-powered reply assistance on Gmail, Chatwork, Google Chat, and LINE Official Account.",
   "permissions": [
     "storage",
     "activeTab",
@@ -13,6 +13,7 @@
     "https://mail.google.com/*",
     "https://www.chatwork.com/*",
     "https://chat.google.com/*",
+    "https://manager.line.biz/*",
     "https://generativelanguage.googleapis.com/*"
   ],
   "action": {
@@ -32,7 +33,8 @@
       "matches": [
         "https://mail.google.com/*",
         "https://www.chatwork.com/*",
-        "https://chat.google.com/*"
+        "https://chat.google.com/*",
+        "https://manager.line.biz/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",
@@ -45,7 +47,8 @@
       "matches": [
         "https://mail.google.com/*",
         "https://www.chatwork.com/*",
-        "https://chat.google.com/*"
+        "https://chat.google.com/*",
+        "https://manager.line.biz/*"
       ]
     }
   ],
