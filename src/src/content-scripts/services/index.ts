@@ -10,6 +10,7 @@ export { LineOfficialAccountAutoSendStrategy } from './line-official-account-aut
 import type { ServiceStrategy } from './interface';
 import { GmailAutoSendStrategy } from './gmail-autosend';
 import { ChatworkStrategy } from './chatwork';
+import { ChatworkAutoSendStrategy } from './chatwork-autosend';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';
 import { LineOfficialAccountSimpleStrategy } from './line-official-account';
 
@@ -32,7 +33,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
     
     case 'www.chatwork.com':
     case 'chatwork.com':
-      return new ChatworkStrategy();
+      console.log('🔧 Using Chatwork AutoSend Strategy');
+      return new ChatworkAutoSendStrategy();
     
     case 'chat.google.com':
       return new GoogleChatSimpleStrategy();
