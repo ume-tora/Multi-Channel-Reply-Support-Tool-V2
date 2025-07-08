@@ -39,20 +39,77 @@ const getConfig = (target: string) => {
         }
       }
 
-    case 'content':
+    case 'content-gmail':
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/content-scripts/index.ts'),
-          name: 'content',
-          fileName: 'content',
+          entry: resolve(__dirname, 'src/content-scripts/gmail.entry.ts'),
+          name: 'GmailContentScript',
+          fileName: 'content-gmail',
           formats: ['iife' as const]
         },
         rollupOptions: {
           output: {
             inlineDynamicImports: true,
             format: 'iife' as const,
-            entryFileNames: 'content.js',
+            entryFileNames: 'content-gmail.js',
+            extend: false
+          }
+        }
+      }
+
+    case 'content-line':
+      return {
+        ...baseConfig,
+        lib: {
+          entry: resolve(__dirname, 'src/content-scripts/line.entry.ts'),
+          name: 'LineContentScript',
+          fileName: 'content-line',
+          formats: ['iife' as const]
+        },
+        rollupOptions: {
+          output: {
+            inlineDynamicImports: true,
+            format: 'iife' as const,
+            entryFileNames: 'content-line.js',
+            extend: false
+          }
+        }
+      }
+
+    case 'content-chatwork':
+      return {
+        ...baseConfig,
+        lib: {
+          entry: resolve(__dirname, 'src/content-scripts/chatwork.entry.ts'),
+          name: 'ChatworkContentScript',
+          fileName: 'content-chatwork',
+          formats: ['iife' as const]
+        },
+        rollupOptions: {
+          output: {
+            inlineDynamicImports: true,
+            format: 'iife' as const,
+            entryFileNames: 'content-chatwork.js',
+            extend: false
+          }
+        }
+      }
+
+    case 'content-google-chat':
+      return {
+        ...baseConfig,
+        lib: {
+          entry: resolve(__dirname, 'src/content-scripts/google-chat.entry.ts'),
+          name: 'GoogleChatContentScript',
+          fileName: 'content-google-chat',
+          formats: ['iife' as const]
+        },
+        rollupOptions: {
+          output: {
+            inlineDynamicImports: true,
+            format: 'iife' as const,
+            entryFileNames: 'content-google-chat.js',
             extend: false
           }
         }

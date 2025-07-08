@@ -1,12 +1,14 @@
 export type { ServiceStrategy, Message } from './interface';
 export { GmailStrategy } from './gmail';
 export { GmailSimpleStrategy } from './gmail-simple';
+export { GmailAutoSendStrategy } from './gmail-autosend';
 export { ChatworkStrategy } from './chatwork';
 export { GoogleChatSimpleStrategy } from './google-chat-simple';
 export { LineOfficialAccountSimpleStrategy as LineOfficialAccountStrategy } from './line-official-account';
+export { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';
 
 import type { ServiceStrategy } from './interface';
-import { GmailSimpleStrategy } from './gmail-simple';
+import { GmailAutoSendStrategy } from './gmail-autosend';
 import { ChatworkStrategy } from './chatwork';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';
 import { LineOfficialAccountSimpleStrategy } from './line-official-account';
@@ -25,9 +27,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
   
   switch (hostname) {
     case 'mail.google.com':
-      // 🚨 緊急修正: シンプル戦略を使用
-      console.log('🚨 Using Gmail Simple Strategy for emergency fix');
-      return new GmailSimpleStrategy();
+      console.log('📧 Using Gmail AutoSend Strategy');
+      return new GmailAutoSendStrategy();
     
     case 'www.chatwork.com':
     case 'chatwork.com':
@@ -38,8 +39,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
     
     case 'manager.line.biz':
     case 'chat.line.biz':
-      console.log('🟢 LINE Official Account detected (refactored)');
-      return new LineOfficialAccountSimpleStrategy();
+      console.log('🟢 LINE Official Account detected (auto-send version)');
+      return new LineOfficialAccountAutoSendStrategy();
     
     default:
       console.warn(`Unsupported service: ${hostname}`);

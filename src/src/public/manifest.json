@@ -31,14 +31,29 @@
   },
   "content_scripts": [
     {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content-gmail.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://www.chatwork.com/*"],
+      "js": ["content-chatwork.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://chat.google.com/*"],
+      "js": ["content-google-chat.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
       "matches": [
-        "https://mail.google.com/*",
-        "https://www.chatwork.com/*",
-        "https://chat.google.com/*",
         "https://manager.line.biz/*",
         "https://chat.line.biz/*"
       ],
-      "js": ["content.js"],
+      "js": ["content-line.js"],
       "run_at": "document_idle",
       "all_frames": true
     }
