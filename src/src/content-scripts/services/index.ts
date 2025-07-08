@@ -3,7 +3,9 @@ export { GmailStrategy } from './gmail';
 export { GmailSimpleStrategy } from './gmail-simple';
 export { GmailAutoSendStrategy } from './gmail-autosend';
 export { ChatworkStrategy } from './chatwork';
+export { ChatworkAutoSendStrategy } from './chatwork-autosend';
 export { GoogleChatSimpleStrategy } from './google-chat-simple';
+export { GoogleChatAutoSendStrategy } from './google-chat-autosend';
 export { LineOfficialAccountSimpleStrategy as LineOfficialAccountStrategy } from './line-official-account';
 export { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';
 
@@ -12,7 +14,9 @@ import { GmailAutoSendStrategy } from './gmail-autosend';
 import { ChatworkStrategy } from './chatwork';
 import { ChatworkAutoSendStrategy } from './chatwork-autosend';
 import { GoogleChatSimpleStrategy } from './google-chat-simple';
+import { GoogleChatAutoSendStrategy } from './google-chat-autosend';
 import { LineOfficialAccountSimpleStrategy } from './line-official-account';
+import { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';
 
 export function createServiceStrategy(url: string): ServiceStrategy | null {
   const urlObj = new URL(url);
@@ -22,8 +26,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
   
   // Google ChatはGmailに統合されているため、URLとハッシュで判定
   if (hostname === 'mail.google.com' && (pathname.includes('/chat') || hash.includes('chat'))) {
-    console.log('Detected Google Chat within Gmail domain');
-    return new GoogleChatSimpleStrategy();
+    console.log('🎯 Detected Google Chat within Gmail domain - Using AutoSend Strategy');
+    return new GoogleChatAutoSendStrategy();
   }
   
   switch (hostname) {
@@ -37,7 +41,8 @@ export function createServiceStrategy(url: string): ServiceStrategy | null {
       return new ChatworkAutoSendStrategy();
     
     case 'chat.google.com':
-      return new GoogleChatSimpleStrategy();
+      console.log('🎯 Using Google Chat AutoSend Strategy');
+      return new GoogleChatAutoSendStrategy();
     
     case 'manager.line.biz':
     case 'chat.line.biz':

@@ -356,6 +356,119 @@ export const LINE_CONFIG: ServiceConfig = {
   }
 };
 
+export const GOOGLE_CHAT_CONFIG: ServiceConfig = {
+  serviceName: 'google-chat',
+  displayName: 'Google Chat',
+  color: '#4285f4',
+  
+  buttonSelectors: [
+    // Google Chat 2025年UI対応セレクタ
+    'button[data-testid*="send"]',
+    'button[aria-label*="送信"]',
+    'button[aria-label*="Send"]',
+    'button[title*="送信"]',
+    'button[title*="Send"]',
+    'button[type="submit"]:not([disabled])',
+    'input[type="submit"]:not([disabled])',
+    
+    // Google Chat特有のセレクタ
+    'div[role="button"][aria-label*="送信"]',
+    'div[role="button"][aria-label*="Send"]',
+    'button[class*="send"]:not([class*="file"])',
+    'button[id*="send"]:not([id*="file"])',
+    'div[data-testid*="send"]',
+    
+    // Gmail統合版Google Chat
+    'button[class*="T-I"][class*="J-J5-Ji"]',
+    'div[role="button"][data-tooltip*="送信"]',
+    'div[role="button"][data-tooltip*="Send"]',
+    
+    // フォーム系
+    'form button[type="submit"]',
+    'form input[type="submit"]',
+    '.DuMIQc button', // Google Chat compose area
+    '.HM .qP button', // Chat input area button
+  ],
+  
+  inputSelectors: [
+    // Google Chat入力エリア
+    'div[contenteditable="true"][aria-label*="メッセージ"]',
+    'div[contenteditable="true"][aria-label*="message"]',
+    'div[contenteditable="true"][role="textbox"]',
+    'textarea[aria-label*="メッセージ"]',
+    'textarea[aria-label*="message"]',
+    'input[placeholder*="メッセージ"]',
+    'input[placeholder*="message"]',
+    
+    // Google Chat特有のセレクタ
+    'div[contenteditable="true"][data-testid*="input"]',
+    'div[contenteditable="true"].editable',
+    '.DuMIQc div[contenteditable="true"]',
+    '.HM .qP div[contenteditable="true"]',
+    
+    // Gmail統合版
+    'div[contenteditable="true"][aria-label*="履歴がオンになっています"]',
+    'div[contenteditable="true"][aria-label*="History is on"]',
+    
+    // フォールバック
+    'div[contenteditable="true"]:not([readonly])',
+    'textarea:not([readonly]):not([disabled])',
+    'input[type="text"]:not([readonly]):not([disabled])'
+  ],
+  
+  messageSelectors: [
+    // Google Chat メッセージセレクタ
+    '[data-message-id]',
+    '[role="listitem"]',
+    '[jsname="bgckF"]',
+    '.Zc1Emd', // Google Chat message class
+    '.nF6pT', // Message text class
+    '[data-topic-id]',
+    
+    // Gmail統合版
+    'div[data-p*="{"]', // JSON data attributes
+    '.zA .y6', // Gmail-like message structure
+    '.aOz .aot', // Chat message content
+    
+    // 一般的なメッセージセレクタ
+    '[class*="message"]',
+    '[class*="Message"]',
+    'div[role="article"]',
+    '.message-content',
+    '.chat-message'
+  ],
+  
+  pageDetectionSelectors: [
+    // Google Chat ページ検出
+    '[data-app-name="dynamite"]', // Google Chat app
+    '.gb_ec[aria-label*="Google Chat"]',
+    '[role="main"][aria-label*="Chat"]',
+    '.nH[role="navigation"]', // Gmail navigation
+    
+    // URL-based detection
+    '.DuMIQc', // Chat compose area
+    '.HM .qP', // Chat input area
+    '[data-ved*="chat"]',
+    
+    // Gmail統合版
+    '.nH.aHU', // Gmail-like structure
+    '.zA.yW', // Message list area
+    '#msgs', // Messages container
+    '.Tm .Ya' // Chat content area
+  ],
+  
+  urlPatterns: [
+    'chat.google.com',
+    'mail.google.com'
+  ],
+  
+  timeouts: {
+    short: 2000,
+    medium: 4000,
+    long: 8000
+  }
+};
+
 /**
  * サービス設定を取得
  */
@@ -367,6 +480,8 @@ export function getServiceConfig(serviceName: string): ServiceConfig | null {
       return GMAIL_CONFIG;
     case 'line-official-account':
       return LINE_CONFIG;
+    case 'google-chat':
+      return GOOGLE_CHAT_CONFIG;
     default:
       return null;
   }
