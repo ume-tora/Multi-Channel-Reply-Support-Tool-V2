@@ -1,4 +1,4 @@
-import { GoogleChatSimpleStrategy } from './services/google-chat-simple';
+import { GoogleChatAutoSendStrategy } from './services/google-chat-autosend';
 import type { ServiceStrategy } from '../shared/types';
 import { memoryManager } from '../shared/performance/MemoryManager';
 import { DragDropManager } from '../shared/ui/DragDropManager';
@@ -23,7 +23,7 @@ class GoogleChatContentScript {
     console.log('💬 Google Chat Content Script: Starting initialization');
     this.injectStyles();
     this.currentUrl = window.location.href;
-    this.strategy = new GoogleChatSimpleStrategy();
+    this.strategy = new GoogleChatAutoSendStrategy();
     
     setTimeout(() => {
       this.checkAndInjectButton();
@@ -252,8 +252,24 @@ class GoogleChatContentScript {
         return;
       }
 
-      console.log(`✅ Found ${messages.length} messages, showing modal...`);
-      this.showReplyModal(apiKey, messages);
+      console.log(`✅ Found ${messages.length} messages, generating AI reply...`);
+      
+      // AI返信を生成してモーダル表示
+      const { MessageConverter } = await import('../shared/types/index');
+      const geminiMessages = MessageConverter.serviceArrayToGemini(messages);
+      
+      const response = await this.generateReplyResponse(apiKey, geminiMessages);
+      if (response.success && response.text) {
+        // AutoSendStrategyのshowModalメソッドを使用
+        if (this.strategy && 'showModal' in this.strategy) {
+          (this.strategy as any).showModal(response.text);
+        } else {
+          console.warn('AutoSend modal functionality not available, falling back to simple modal');
+          this.showReplyModal(apiKey, messages);
+        }
+      } else {
+        alert(`AI返信の生成でエラーが発生しました: ${response.error || 'Unknown error'}`);
+      }
     } catch (error) {
       console.error('💥 Error handling Google Chat button click:', error);
       alert(`エラーが発生しました: ${error.message || 'Unknown error'}`);
@@ -298,6 +314,38 @@ class GoogleChatContentScript {
         throw error;
       }
       return null;
+    }
+  }
+
+  private async generateReplyResponse(apiKey: string, messages: any[]): Promise<any> {
+    try {
+      const requestData = {
+        type: 'GENERATE_REPLY',
+        messages: messages,
+        apiKey: apiKey,
+        timestamp: Date.now()
+      };
+      
+      const response = await new Promise<any>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Background communication timeout after 60 seconds'));
+        }, 60000);
+
+        chrome.runtime.sendMessage(requestData, (response) => {
+          clearTimeout(timeout);
+          
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('💥 Error generating reply:', error);
+      return { success: false, error: error.message };
     }
   }
 
