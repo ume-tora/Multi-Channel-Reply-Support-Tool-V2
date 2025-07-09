@@ -17,7 +17,10 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
   constructor() {
     super();
     this.sendButtonManager = new SendButtonManager('google-chat');
-    this.modalManager = new ModalManager('google-chat');
+    this.modalManager = new ModalManager('google-chat', {
+      displayName: GOOGLE_CHAT_CONFIG.displayName,
+      color: GOOGLE_CHAT_CONFIG.color
+    });
     this.debugHelper = new DebugHelper('google-chat');
   }
 
@@ -28,7 +31,7 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
   /**
    * 挿入ポイントを検索
    */
-  findInsertionPoint(): HTMLElement | null {
+  async findInsertionPoint(): Promise<HTMLElement | null> {
     console.log('🔍 Google Chat: Looking for insertion point...');
     
     // ホーム画面はスキップ
@@ -59,6 +62,7 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
     }
 
     // 4. フローティングボタンとして表示
+    console.log('🔍 Creating floating container as fallback');
     return this.createFloatingContainer();
   }
 
@@ -79,13 +83,76 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
    * 入力エリアを検索
    */
   private findInputArea(): HTMLElement | null {
-    return this.findElementBySelectors(GOOGLE_CHAT_CONFIG.inputSelectors);
+    console.log('🔍 Google Chat: Looking for input area...');
+    
+    // デバッグ: 全てのcontenteditable要素を表示
+    const allContentEditable = document.querySelectorAll('[contenteditable="true"]');
+    console.log(`🔍 Found ${allContentEditable.length} contenteditable elements:`, 
+      Array.from(allContentEditable).map(el => ({
+        tagName: el.tagName,
+        className: el.className,
+        ariaLabel: el.getAttribute('aria-label'),
+        placeholder: el.getAttribute('placeholder'),
+        dataTestId: el.getAttribute('data-testid')
+      }))
+    );
+    
+    // デバッグ: 全てのrole="textbox"要素を表示
+    const allTextboxes = document.querySelectorAll('[role="textbox"]');
+    console.log(`🔍 Found ${allTextboxes.length} textbox elements:`, 
+      Array.from(allTextboxes).map(el => ({
+        tagName: el.tagName,
+        className: el.className,
+        ariaLabel: el.getAttribute('aria-label'),
+        contentEditable: el.getAttribute('contenteditable')
+      }))
+    );
+    
+    const inputArea = this.findElementBySelectors(GOOGLE_CHAT_CONFIG.inputSelectors);
+    if (inputArea) {
+      console.log('✅ Found input area:', inputArea);
+    } else {
+      console.log('❌ Input area not found with configured selectors');
+      // フォールバック: より広範囲で検索
+      const fallbackInput = document.querySelector('div[contenteditable="true"]') ||
+                           document.querySelector('[role="textbox"]') ||
+                           document.querySelector('textarea') ||
+                           document.querySelector('input[type="text"]');
+      if (fallbackInput) {
+        console.log('🔄 Found fallback input:', fallbackInput);
+        return fallbackInput as HTMLElement;
+      }
+    }
+    return inputArea;
   }
 
   /**
    * チャットエリアを検索
    */
   private findChatArea(): HTMLElement | null {
+    console.log('🔍 Google Chat: Looking for chat area...');
+    
+    // デバッグ: 全てのrole="main"要素を表示
+    const allMain = document.querySelectorAll('[role="main"]');
+    console.log(`🔍 Found ${allMain.length} main elements:`, 
+      Array.from(allMain).map(el => ({
+        tagName: el.tagName,
+        className: el.className,
+        ariaLabel: el.getAttribute('aria-label'),
+        id: el.id
+      }))
+    );
+    
+    // デバッグ: Google Chat特有のクラスを持つ要素を検索
+    const chatSpecific = document.querySelectorAll('.DuMIQc, .HM, .nH');
+    console.log(`🔍 Found ${chatSpecific.length} Google Chat specific elements:`, 
+      Array.from(chatSpecific).map(el => ({
+        tagName: el.tagName,
+        className: el.className,
+        id: el.id
+      }))
+    );
+
     const selectors = [
       '[role="main"]',
       '[aria-label*="会話"]',
@@ -97,13 +164,31 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
       '#msgs' // Messages container
     ];
 
-    return this.findElementBySelectors(selectors);
+    const chatArea = this.findElementBySelectors(selectors);
+    if (chatArea) {
+      console.log('✅ Found chat area:', chatArea);
+    } else {
+      console.log('❌ Chat area not found with configured selectors');
+      // フォールバック: body要素を返す
+      console.log('🔄 Using document.body as fallback chat area');
+      return document.body;
+    }
+    return chatArea;
   }
 
   /**
    * フローティングコンテナ作成
    */
   private createFloatingContainer(): HTMLElement {
+    console.log('🔍 Google Chat: Creating floating container...');
+    
+    // 既存のフローティングコンテナがあれば削除
+    const existingContainer = document.getElementById('google-chat-floating-container');
+    if (existingContainer) {
+      console.log('🧹 Removing existing floating container');
+      existingContainer.remove();
+    }
+    
     const container = document.createElement('div');
     container.id = 'google-chat-floating-container';
     container.style.cssText = `
@@ -120,6 +205,7 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
     `;
 
     document.body.appendChild(container);
+    console.log('✅ Floating container created successfully');
     return container;
   }
 
@@ -255,23 +341,101 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
    */
   async autoSend(): Promise<boolean> {
     console.log('🚀 Google Chat: Starting auto-send...');
-    
-    try {
-      const success = await this.sendButtonManager.findAndClickSendButton(
-        GOOGLE_CHAT_CONFIG.buttonSelectors
-      );
-      
-      if (success) {
-        this.logSuccess('Auto-send completed successfully');
-      } else {
-        this.logError('Auto-send failed', new Error('Could not find or click send button'));
+    const SEND_TIMEOUT = 8000; // 8秒のタイムアウト
+
+    // 更新されたセレクタリスト
+    const buttonSelectors = [
+      'button[data-testid="send-button"]', // 最優先: data-testidは比較的安定
+      'button[aria-label*="Send"]:not([disabled])',
+      'button[aria-label*="送信"]:not([disabled])',
+      'button[data-testid*="send"]:not([disabled])',
+      'button[title*="Send"]:not([disabled])',
+      'button[title*="送信"]:not([disabled])',
+      ...GOOGLE_CHAT_CONFIG.buttonSelectors, // 既存のセレクタをフォールバックとして維持
+    ];
+    // 重複を除去
+    const uniqueButtonSelectors = [...new Set(buttonSelectors)];
+    console.log(`🔍 Using selectors: ${uniqueButtonSelectors.join(', ')}`);
+
+    return new Promise(async (resolve) => {
+      const timeoutId = setTimeout(() => {
+        console.error('💥 Auto-send timed out', new Error(`Send process did not complete within ${SEND_TIMEOUT}ms`));
+        resolve(false);
+      }, SEND_TIMEOUT);
+
+      try {
+        console.log('🕵️‍♂️ Finding and clicking the send button...');
+        
+        // デバッグ: 全てのボタン要素を表示
+        const allButtons = document.querySelectorAll('button');
+        console.log(`🔍 Found ${allButtons.length} button elements:`, 
+          Array.from(allButtons).slice(0, 10).map(btn => ({
+            tagName: btn.tagName,
+            type: btn.type,
+            className: btn.className,
+            ariaLabel: btn.getAttribute('aria-label'),
+            title: btn.title,
+            dataTestId: btn.getAttribute('data-testid'),
+            disabled: btn.disabled,
+            textContent: btn.textContent?.trim().substring(0, 50)
+          }))
+        );
+        
+        // デバッグ: 各セレクタで見つかる要素を確認
+        uniqueButtonSelectors.slice(0, 5).forEach((selector, index) => {
+          try {
+            const elements = document.querySelectorAll(selector);
+            console.log(`🔍 Selector ${index + 1} "${selector}" found ${elements.length} elements`);
+          } catch (e) {
+            console.log(`❌ Selector ${index + 1} "${selector}" failed:`, e.message);
+          }
+        });
+        
+        const success = await this.sendButtonManager.findAndClickSendButton(
+          uniqueButtonSelectors
+        );
+        
+        clearTimeout(timeoutId);
+
+        if (success) {
+          console.log('✅ Auto-send completed successfully');
+          resolve(true);
+        } else {
+          console.error('❌ Auto-send failed: Could not find or click the send button');
+          this.debugSendButtonFailure(); // 詳細なデバッグ情報を出力
+          resolve(false);
+        }
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('💥 Auto-send exception:', error);
+        resolve(false);
       }
-      
-      return success;
-    } catch (error) {
-      this.logError('Auto-send exception', error);
-      return false;
-    }
+    });
+  }
+
+  /**
+   * チャット情報を抽出
+   */
+  private extractChatInfo(): { chatName: string; roomName: string } {
+    console.log('ℹ️ Google Chat: Extracting chat info...');
+    
+    const roomNameEl = this.findElementBySelectors([
+      '[data-testid="conversation-name"]',
+      'h2[aria-live="polite"]',
+      '.qs41qe .zYvP2d'
+    ]);
+    
+    const spaceNameEl = this.findElementBySelectors([
+      '[data-testid="space-name"]',
+      '[aria-label*="スペース"]',
+      '.ZaI3hb .aOHs1d'
+    ]);
+
+    const roomName = roomNameEl?.textContent?.trim() || '不明なルーム';
+    const chatName = spaceNameEl?.textContent?.trim() || 'Google Chat';
+
+    console.log(`✅ Chat Info Extracted: Chat=${chatName}, Room=${roomName}`);
+    return { chatName, roomName };
   }
 
   /**
@@ -280,10 +444,17 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
   showModal(generatedText: string): void {
     console.log('📱 Google Chat: Showing modal...');
     
-    this.modalManager.showModal(
+    const chatInfo = this.extractChatInfo();
+
+    this.modalManager.showAutoSendModal(
       generatedText,
-      (text) => this.insertReply(text),
-      () => this.autoSend()
+      chatInfo,
+      async (content: string) => {
+        this.insertReply(content);
+        // テキスト挿入後にUIが更新されるのを待つため、わずかな待機時間を設けます
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+        return this.autoSend();
+      }
     );
   }
 

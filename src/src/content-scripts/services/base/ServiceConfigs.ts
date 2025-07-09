@@ -362,36 +362,58 @@ export const GOOGLE_CHAT_CONFIG: ServiceConfig = {
   color: '#4285f4',
   
   buttonSelectors: [
-    // Google Chat 2025年UI対応セレクタ
-    'button[data-testid*="send"]',
-    'button[aria-label*="送信"]',
-    'button[aria-label*="Send"]',
-    'button[title*="送信"]',
-    'button[title*="Send"]',
-    'button[type="submit"]:not([disabled])',
-    'input[type="submit"]:not([disabled])',
+    // 2025年最新のGoogle Chat送信ボタン
+    'button[data-testid="send-button"]',
+    'button[data-testid*="send"]:not([disabled])',
+    'button[aria-label*="Send message"]',
+    'button[aria-label*="メッセージを送信"]',
+    'button[aria-label*="送信"]:not([disabled])',
+    'button[aria-label*="Send"]:not([disabled])',
+    'button[title*="送信"]:not([disabled])',
+    'button[title*="Send"]:not([disabled])',
+    
+    // アイコンベースのセレクタ
+    'button:has([data-icon="send"])',
+    'button:has(.google-material-icons:contains("send"))',
+    'button[class*="send"]:not([class*="file"]):not([disabled])',
     
     // Google Chat特有のセレクタ
     'div[role="button"][aria-label*="送信"]',
     'div[role="button"][aria-label*="Send"]',
-    'button[class*="send"]:not([class*="file"])',
-    'button[id*="send"]:not([id*="file"])',
+    'button[id*="send"]:not([id*="file"]):not([disabled])',
     'div[data-testid*="send"]',
+    
+    // 構造ベースのセレクタ
+    '[role="main"] button[type="submit"]:not([disabled])',
+    '.VfPpkd-LgbsSe button:not([disabled])',
     
     // Gmail統合版Google Chat
     'button[class*="T-I"][class*="J-J5-Ji"]',
     'div[role="button"][data-tooltip*="送信"]',
     'div[role="button"][data-tooltip*="Send"]',
     
-    // フォーム系
-    'form button[type="submit"]',
-    'form input[type="submit"]',
-    '.DuMIQc button', // Google Chat compose area
-    '.HM .qP button', // Chat input area button
+    // フォーム系とコンテナベース
+    'form button[type="submit"]:not([disabled])',
+    'form input[type="submit"]:not([disabled])',
+    '.DuMIQc button:not([disabled])', // Google Chat compose area
+    '.HM .qP button:not([disabled])', // Chat input area button
+    
+    // フォールバック
+    'button[type="submit"]:not([disabled])',
+    'input[type="submit"]:not([disabled])'
   ],
   
   inputSelectors: [
-    // Google Chat入力エリア
+    // 2025年最新のGoogle Chat入力エリア
+    'div[data-testid="message-input"]',
+    'div[data-testid="chat-input"]',
+    'div[role="textbox"][contenteditable="true"]',
+    'div[aria-label*="メッセージを送信"]',
+    'div[aria-label*="Send a message"]',
+    'div[placeholder*="メッセージ"]',
+    'div[placeholder*="message"]',
+    
+    // Google Chat入力エリア（既存）
     'div[contenteditable="true"][aria-label*="メッセージ"]',
     'div[contenteditable="true"][aria-label*="message"]',
     'div[contenteditable="true"][role="textbox"]',
@@ -405,6 +427,11 @@ export const GOOGLE_CHAT_CONFIG: ServiceConfig = {
     'div[contenteditable="true"].editable',
     '.DuMIQc div[contenteditable="true"]',
     '.HM .qP div[contenteditable="true"]',
+    
+    // 新しいGoogle Chat UI構造
+    '[data-tab-id="chat-messages"] div[contenteditable="true"]',
+    '[role="main"] div[contenteditable="true"]',
+    '.VfPpkd-fmcmS-wGMbrd div[contenteditable="true"]',
     
     // Gmail統合版
     'div[contenteditable="true"][aria-label*="履歴がオンになっています"]',
