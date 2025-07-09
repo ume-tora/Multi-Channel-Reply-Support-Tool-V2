@@ -56,7 +56,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
       right: 40px !important;
       z-index: 999999 !important;
       background: white !important;
-      border: 2px solid #00c300 !important;
+      border: 2px solid #16a34a !important;
       border-radius: 12px !important;
       padding: 16px !important;
       box-shadow: 0 8px 24px rgba(0, 195, 0, 0.4) !important;
@@ -64,7 +64,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     `;
 
-    container.innerHTML = '<div style="color: #00c300; font-size: 12px; margin-bottom: 8px; text-align: center;">LINE AI Assistant</div>';
+    container.innerHTML = '<div style="color: #16a34a; font-size: 12px; margin-bottom: 8px; text-align: center;">LINE AI Assistant</div>';
     document.body.appendChild(container);
     
     return container;
@@ -175,17 +175,17 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
         max-height: 80vh !important;
         overflow-y: auto !important;
       ">
-        <div style="color: #00c300; font-size: 24px; margin-bottom: 16px; font-weight: bold;">
+        <div style="color: #16a34a; font-size: 24px; margin-bottom: 16px; font-weight: bold;">
           🎯 AI返信の確認と送信
         </div>
         
         <div style="color: #666; font-size: 14px; margin-bottom: 20px;">
-          生成された返信を確認して、LINE入力欄に反映してください
+          生成された返信を確認して、コピーボタンでクリップボードにコピーしてください
         </div>
         
         <div style="
           background: #f8f9fa !important;
-          border: 2px solid #00c300 !important;
+          border: 2px solid #16a34a !important;
           border-radius: 12px !important;
           padding: 20px !important;
           margin: 20px 0 !important;
@@ -193,7 +193,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
           max-height: 200px !important;
           overflow-y: auto !important;
         ">
-          <div style="color: #00c300; font-size: 12px; font-weight: bold; margin-bottom: 8px;">
+          <div style="color: #16a34a; font-size: 12px; font-weight: bold; margin-bottom: 8px;">
             📝 生成された返信内容:
           </div>
           <textarea id="reply-content" style="
@@ -219,13 +219,13 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
           font-size: 13px !important;
           color: #856404 !important;
         ">
-          ⚠️ <strong>安全確認:</strong> 内容を確認してから「反映」ボタンを押してください。<br>
-          反映後は必ずLINE画面で最終確認してから送信してください。
+          ⚠️ <strong>安全確認:</strong> 内容を確認してから「コピーする」ボタンを押してください。<br>
+          コピー後は必ずLINE画面で手動貼り付けし、最終確認してから送信してください。
         </div>
         
         <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          <button id="insert-btn" style="
-            background: #00c300 !important;
+          <button id="copy-btn" style="
+            background: #16a34a !important;
             color: white !important;
             border: none !important;
             padding: 16px 32px !important;
@@ -236,21 +236,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
             transition: all 0.2s !important;
             min-width: 140px !important;
           ">
-            🚀 LINE入力欄に反映
-          </button>
-          
-          <button id="copy-btn" style="
-            background: #6c757d !important;
-            color: white !important;
-            border: none !important;
-            padding: 16px 32px !important;
-            border-radius: 8px !important;
-            font-size: 16px !important;
-            cursor: pointer !important;
-            transition: all 0.2s !important;
-            min-width: 140px !important;
-          ">
-            📋 コピーのみ
+            📋 コピーする
           </button>
           
           <button id="cancel-btn" style="
@@ -279,8 +265,8 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
         ">
           <strong>💡 使用方法:</strong><br>
           1. 上記テキストを必要に応じて編集<br>
-          2. 「LINE入力欄に反映」ボタンをクリック<br>
-          3. LINE画面で内容を最終確認<br>
+          2. 「コピーする」ボタンをクリック<br>
+          3. LINE画面の入力欄に手動で貼り付け<br>
           4. 問題なければLINEの送信ボタンをクリック
         </div>
       </div>
@@ -295,47 +281,8 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
    */
   private setupModalEvents(modal: HTMLElement): void {
     const textarea = modal.querySelector('#reply-content') as HTMLTextAreaElement;
-    const insertBtn = modal.querySelector('#insert-btn') as HTMLButtonElement;
     const copyBtn = modal.querySelector('#copy-btn') as HTMLButtonElement;
     const cancelBtn = modal.querySelector('#cancel-btn') as HTMLButtonElement;
-
-    // 反映ボタンクリック
-    insertBtn?.addEventListener('click', async () => {
-      const text = textarea?.value || '';
-      if (!text.trim()) {
-        insertBtn.innerHTML = '❌ 内容が空です';
-        insertBtn.style.background = '#dc3545 !important';
-        setTimeout(() => {
-          insertBtn.innerHTML = '🚀 LINE入力欄に反映';
-          insertBtn.style.background = '#00c300 !important';
-        }, 2000);
-        return;
-      }
-
-      insertBtn.innerHTML = '🔄 反映中...';
-      insertBtn.disabled = true;
-
-      const success = await this.insertToLineInput(text);
-      
-      if (success) {
-        insertBtn.innerHTML = '✅ 反映完了！';
-        insertBtn.style.background = '#28a745 !important';
-        
-        // 成功時のメッセージ
-        this.showSuccessMessage();
-        
-        setTimeout(() => modal.remove(), 2000);
-      } else {
-        insertBtn.innerHTML = '❌ 反映失敗';
-        insertBtn.style.background = '#dc3545 !important';
-        insertBtn.disabled = false;
-        
-        setTimeout(() => {
-          insertBtn.innerHTML = '🚀 LINE入力欄に反映';
-          insertBtn.style.background = '#00c300 !important';
-        }, 3000);
-      }
-    });
 
     // コピーボタンクリック
     copyBtn?.addEventListener('click', async () => {
@@ -370,295 +317,6 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
     document.addEventListener('keydown', escHandler);
   }
 
-  /**
-   * LINE入力欄にテキストを挿入（高度な手法）
-   */
-  private async insertToLineInput(text: string): Promise<boolean> {
-    console.log('🚀 Attempting to insert text to LINE input field...');
-    
-    try {
-      // 入力フィールドを検索
-      const inputField = await this.findLineInputField();
-      if (!inputField) {
-        console.log('❌ LINE input field not found');
-        return false;
-      }
-
-      console.log('✅ Found LINE input field:', inputField);
-
-      // 複数の挿入方式を試行
-      const methods = [
-        () => this.insertViaDocumentCommand(inputField, text),
-        () => this.insertViaClipboard(inputField, text),
-        () => this.insertViaKeyboardSimulation(inputField, text),
-        () => this.insertViaDirectValue(inputField, text)
-      ];
-
-      for (const method of methods) {
-        try {
-          const success = await method();
-          if (success) {
-            console.log('✅ Text insertion successful');
-            return true;
-          }
-        } catch (error) {
-          console.log('❌ Insertion method failed:', error);
-          continue;
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error('❌ Failed to insert text:', error);
-      return false;
-    }
-  }
-
-  /**
-   * LINE入力フィールドを検索
-   */
-  private async findLineInputField(): Promise<HTMLElement | null> {
-    console.log('🔍 Searching for LINE input field...');
-    
-    const selectors = [
-      'textarea[placeholder*="メッセージ"]',
-      'textarea[placeholder*="Message"]',
-      'textarea[placeholder*="Enter"]',
-      'textarea[placeholder*="送信"]',
-      'div[contenteditable="true"]',
-      '[role="textbox"]',
-      'textarea',
-      'input[type="text"]'
-    ];
-
-    // 要素の出現を待機
-    for (let attempt = 0; attempt < 10; attempt++) {
-      for (const selector of selectors) {
-        const elements = document.querySelectorAll(selector);
-        
-        for (const element of Array.from(elements)) {
-          const htmlElement = element as HTMLElement;
-          if (this.isValidInputField(htmlElement)) {
-            console.log(`✅ Found valid input field with selector: ${selector}`);
-            return htmlElement;
-          }
-        }
-      }
-      
-      // 100ms待機して再試行
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    console.log('❌ No valid LINE input field found');
-    return null;
-  }
-
-  /**
-   * 入力フィールドが有効かチェック
-   */
-  private isValidInputField(element: HTMLElement): boolean {
-    const style = window.getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    
-    return (
-      style.display !== 'none' &&
-      style.visibility !== 'hidden' &&
-      style.opacity !== '0' &&
-      rect.width > 0 &&
-      rect.height > 0 &&
-      !element.hasAttribute('readonly') &&
-      !element.hasAttribute('disabled')
-    );
-  }
-
-  /**
-   * document.execCommandでテキスト挿入
-   */
-  private insertViaDocumentCommand(element: HTMLElement, text: string): boolean {
-    try {
-      element.focus();
-      
-      // 既存テキストを選択
-      if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-        (element as HTMLInputElement).select();
-      } else {
-        // contenteditable要素の場合
-        const range = document.createRange();
-        range.selectNodeContents(element);
-        const selection = window.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-      }
-      
-      // execCommandでテキスト挿入
-      const success = document.execCommand('insertText', false, text);
-      console.log(`📝 execCommand result: ${success}`);
-      
-      return success;
-    } catch (error) {
-      console.log('❌ execCommand failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * クリップボード経由でテキスト挿入
-   */
-  private async insertViaClipboard(element: HTMLElement, text: string): Promise<boolean> {
-    try {
-      // クリップボードに書き込み
-      await navigator.clipboard.writeText(text);
-      
-      element.focus();
-      
-      // 全選択
-      const selectAllEvent = new KeyboardEvent('keydown', {
-        key: 'a',
-        code: 'KeyA',
-        ctrlKey: true,
-        bubbles: true
-      });
-      element.dispatchEvent(selectAllEvent);
-      
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // ペースト
-      const pasteEvent = new KeyboardEvent('keydown', {
-        key: 'v',
-        code: 'KeyV',
-        ctrlKey: true,
-        bubbles: true
-      });
-      element.dispatchEvent(pasteEvent);
-      
-      console.log('📋 Clipboard insertion attempted');
-      return true;
-    } catch (error) {
-      console.log('❌ Clipboard insertion failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * キーボードシミュレーションでテキスト挿入
-   */
-  private insertViaKeyboardSimulation(element: HTMLElement, text: string): boolean {
-    try {
-      element.focus();
-      
-      // 既存テキストをクリア
-      this.clearElement(element);
-      
-      // 文字を一つずつ入力
-      for (const char of text) {
-        this.simulateCharacterInput(element, char);
-      }
-      
-      console.log('⌨️ Keyboard simulation completed');
-      return true;
-    } catch (error) {
-      console.log('❌ Keyboard simulation failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 直接値設定でテキスト挿入
-   */
-  private insertViaDirectValue(element: HTMLElement, text: string): boolean {
-    try {
-      if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-        (element as HTMLInputElement).value = text;
-      } else {
-        element.textContent = text;
-      }
-      
-      // 各種イベントを発火
-      this.fireInputEvents(element);
-      
-      console.log('📝 Direct value insertion attempted');
-      return true;
-    } catch (error) {
-      console.log('❌ Direct value insertion failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 要素をクリア
-   */
-  private clearElement(element: HTMLElement): void {
-    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-      (element as HTMLInputElement).value = '';
-    } else {
-      element.textContent = '';
-    }
-  }
-
-  /**
-   * 文字入力をシミュレート
-   */
-  private simulateCharacterInput(element: HTMLElement, char: string): void {
-    const events = ['keydown', 'keypress', 'beforeinput', 'input', 'keyup'];
-    
-    events.forEach(eventType => {
-      const event = new KeyboardEvent(eventType, {
-        key: char,
-        bubbles: true,
-        cancelable: true
-      });
-      element.dispatchEvent(event);
-    });
-    
-    // 実際の値を更新
-    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-      const currentValue = (element as HTMLInputElement).value;
-      (element as HTMLInputElement).value = currentValue + char;
-    } else {
-      element.textContent = (element.textContent || '') + char;
-    }
-  }
-
-  /**
-   * 入力イベントを発火
-   */
-  private fireInputEvents(element: HTMLElement): void {
-    const events = ['input', 'change', 'blur', 'focus'];
-    
-    events.forEach(eventType => {
-      const event = new Event(eventType, { bubbles: true });
-      element.dispatchEvent(event);
-    });
-  }
-
-  /**
-   * 成功メッセージを表示
-   */
-  private showSuccessMessage(): void {
-    const message = document.createElement('div');
-    message.style.cssText = `
-      position: fixed !important;
-      top: 20px !important;
-      right: 20px !important;
-      background: #28a745 !important;
-      color: white !important;
-      padding: 16px 24px !important;
-      border-radius: 8px !important;
-      font-size: 14px !important;
-      font-weight: bold !important;
-      z-index: 10000000 !important;
-      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3) !important;
-      animation: fadeIn 0.3s ease-out !important;
-    `;
-    
-    message.innerHTML = '✅ LINE入力欄に反映されました！内容を確認して送信してください';
-    document.body.appendChild(message);
-    
-    setTimeout(() => {
-      message.style.animation = 'fadeOut 0.3s ease-in';
-      setTimeout(() => message.remove(), 300);
-    }, 3000);
-  }
 
   /**
    * スレッドIDを取得
