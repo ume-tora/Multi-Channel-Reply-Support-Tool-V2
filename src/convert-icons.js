@@ -1,57 +1,69 @@
 import fs from 'fs'
 import path from 'path'
+import sharp from 'sharp'
 
-// SVGをPNGに変換する関数（Canvas APIを使用）
-function svgToPng(svgContent, width, height) {
-  return new Promise((resolve, reject) => {
-    // Node.js環境での実装
-    // ブラウザ環境でのみ動作するため、代替手段を使用
+// SVGをPNGに変換する関数（sharpを使用）
+async function svgToPng(svgContent, width, height) {
+  try {
+    const pngBuffer = await sharp(Buffer.from(svgContent))
+      .resize(width, height)
+      .png()
+      .toBuffer()
     
-    // 簡単なSVG→PNG変換のためのbase64エンコーディング
-    const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`
-    
-    // この関数は実際のPNG変換ではなく、SVGをPNGとして保存
-    // 実際の変換にはsharp, jimp, またはCanvas APIが必要
-    
-    // とりあえずSVGファイルをPNGとしてコピー（暫定的解決策）
-    resolve(svgContent)
-  })
+    return pngBuffer
+  } catch (error) {
+    console.error('Error converting SVG to PNG:', error)
+    throw error
+  }
 }
 
 async function convertIconsToPng() {
   const iconsDir = path.join(process.cwd(), 'src/public/icons')
+  const distIconsDir = path.join(process.cwd(), 'dist/icons')
   const sizes = [16, 48, 128]
   
+  console.log('🚀 Starting icon conversion...')
+  console.log('📁 Icons directory:', iconsDir)
+  console.log('📁 Dist icons directory:', distIconsDir)
+  
   try {
+    // distフォルダのiconsディレクトリを作成
+    if (!fs.existsSync(distIconsDir)) {
+      fs.mkdirSync(distIconsDir, { recursive: true })
+      console.log('📁 Created dist icons directory')
+    }
+    
     // icon.svgを読み込み
     const svgPath = path.join(iconsDir, 'icon.svg')
+    console.log('🔍 Looking for icon.svg at:', svgPath)
+    
     if (!fs.existsSync(svgPath)) {
-      console.error('icon.svg not found')
+      console.error('❌ icon.svg not found at:', svgPath)
       return
     }
+    
+    console.log('✅ Found icon.svg')
     
     const svgContent = fs.readFileSync(svgPath, 'utf8')
     
     // 各サイズのPNGファイルを作成
     for (const size of sizes) {
-      const pngPath = path.join(iconsDir, `icon${size}.png`)
+      const pngPath = path.join(distIconsDir, `icon${size}.png`)
       
-      // SVGのサイズを変更
-      const resizedSvg = svgContent
-        .replace(/width="128"/, `width="${size}"`)
-        .replace(/height="128"/, `height="${size}"`)
-        .replace(/viewBox="0 0 128 128"/, `viewBox="0 0 128 128"`)
+      console.log(`Converting icon to ${size}x${size} PNG...`)
       
-      // 暫定的にSVGをPNGファイル名で保存
-      // 注意: これは実際のPNG変換ではありませんが、Chrome拡張機能では動作する場合があります
-      fs.writeFileSync(pngPath, resizedSvg)
+      // SVGをPNGに変換
+      const pngBuffer = await svgToPng(svgContent, size, size)
       
-      console.log(`Created ${pngPath}`)
+      // PNGファイルを保存
+      fs.writeFileSync(pngPath, pngBuffer)
+      
+      console.log(`✅ Created ${pngPath}`)
     }
     
-    console.log('Icon conversion completed')
+    console.log('🎉 Icon conversion completed successfully!')
   } catch (error) {
-    console.error('Error converting icons:', error)
+    console.error('❌ Error converting icons:', error)
   }
 }
 
