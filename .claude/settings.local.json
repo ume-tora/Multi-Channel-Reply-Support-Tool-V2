@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(npm run:*)",
+      "Bash(find:*)",
+      "Bash(rm:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(export PROMPT=\"Chrome拡張機能Manifest V3でExtension context invalidatedエラーとMemoryManager Critical memory usage detectedエラーが継続的に発生しています。\n\n**現在の問題:**\n1. ''ChromeStorageManager: Error clearing expired cache: Error: Extension context invalidated'' - 拡張機能のコンテキストが無効化されてもエラーが発生し続ける\n2. ''MemoryManager: Critical memory usage detected, forcing cleanup'' - メモリ監視を無効化してもエラーが出続ける\n\n**技術仕様:**\n- Chrome Manifest V3拡張機能\n- TypeScript + React\n- Content Script、Background Script、Popup で構成\n- Viteでビルド\n- chrome.storage.local使用\n\n**試した対策:**\n- Extension context チェック（chrome.runtime?.id）を追加\n- ChromeStorageManagerにtry-catch強化\n- MemoryManagerのメモリ監視を無効化\n- ストレージアクセス前の安全チェック\n\n**現在のエラー発生パターン:**\n- GmailやChatworkページで継続的に発生\n- 拡張機能リロード後もエラー継続\n- content.js:1920行目でMemoryManagerエラー\n- ChromeStorageManagerでコンテキスト無効化エラー\n\nこの問題の根本原因と、Chrome拡張機能のベストプラクティスに基づいた解決策を教えてください。特に、コンテキストライフサイクル管理とエラーハンドリングの適切な実装方法を提案してください。\")",
+      "Bash(gemini:*)",
+      "Bash(grep:*)",
+      "Bash(export:*)",
+      "Bash(cp:*)",
+      "Bash(sed:*)",
+      "Bash(node:*)",
+      "Bash(timeout:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": []
+  }
+}

@@ -58,7 +58,7 @@ export class LineOfficialAccountSimpleStrategy implements ServiceStrategy {
       right: 40px !important;
       z-index: 999999 !important;
       background: white !important;
-      border: 2px solid #00c300 !important;
+      border: 2px solid #16a34a !important;
       border-radius: 12px !important;
       padding: 16px !important;
       box-shadow: 0 8px 24px rgba(0, 195, 0, 0.4) !important;
@@ -66,7 +66,7 @@ export class LineOfficialAccountSimpleStrategy implements ServiceStrategy {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     `;
 
-    container.innerHTML = '<div style="color: #00c300; font-size: 12px; margin-bottom: 8px; text-align: center;">LINE AI Assistant</div>';
+    container.innerHTML = '<div style="color: #16a34a; font-size: 12px; margin-bottom: 8px; text-align: center;">LINE AI Assistant</div>';
     document.body.appendChild(container);
     
     return container;
@@ -180,7 +180,7 @@ export class LineOfficialAccountSimpleStrategy implements ServiceStrategy {
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
         text-align: center !important;
       ">
-        <div style="color: #00c300; font-size: 24px; margin-bottom: 16px;">
+        <div style="color: #16a34a; font-size: 24px; margin-bottom: 16px;">
           🎯 AI返信を生成しました
         </div>
         
@@ -201,7 +201,7 @@ export class LineOfficialAccountSimpleStrategy implements ServiceStrategy {
         
         <div style="display: flex; gap: 16px; justify-content: center;">
           <button id="copy-btn-simple" style="
-            background: #00c300 !important;
+            background: #16a34a !important;
             color: white !important;
             border: none !important;
             padding: 16px 32px !important;

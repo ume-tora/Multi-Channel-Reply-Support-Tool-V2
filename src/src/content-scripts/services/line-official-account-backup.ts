@@ -185,14 +185,14 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
 
     const container = document.createElement('div');
     container.id = 'line-floating-container';
-    container.innerHTML = '<div style="color: #00c300; font-size: 12px; margin-bottom: 8px;">LINE AI Assistant</div>';
+    container.innerHTML = '<div style="color: #16a34a; font-size: 12px; margin-bottom: 8px;">LINE AI Assistant</div>';
     container.style.cssText = `
       position: fixed !important;
       bottom: 120px !important;
       right: 40px !important;
       z-index: 999999 !important;
       background: white !important;
-      border: 2px solid #00c300 !important;
+      border: 2px solid #16a34a !important;
       border-radius: 12px !important;
       padding: 16px !important;
       box-shadow: 0 8px 24px rgba(0, 195, 0, 0.4) !important;
@@ -898,7 +898,7 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
       transform: translate(-50%, -50%) !important;
       z-index: 999999 !important;
       background: white !important;
-      border: 3px solid #00c300 !important;
+      border: 3px solid #16a34a !important;
       border-radius: 16px !important;
       padding: 24px !important;
       box-shadow: 0 12px 32px rgba(0, 195, 0, 0.3) !important;
@@ -910,7 +910,7 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
     
     assistanceContainer.innerHTML = `
       <div style="text-align: center; margin-bottom: 16px;">
-        <div style="color: #00c300; font-size: 18px; font-weight: bold; margin-bottom: 8px;">
+        <div style="color: #16a34a; font-size: 18px; font-weight: bold; margin-bottom: 8px;">
           🎯 AI返信が生成されました
         </div>
         <div style="color: #666; font-size: 14px;">
@@ -926,7 +926,7 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
       
       <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
         <button id="copy-text-btn" style="
-          background: #00c300 !important;
+          background: #16a34a !important;
           color: white !important;
           border: none !important;
           padding: 12px 24px !important;
@@ -1003,7 +1003,7 @@ export class LineOfficialAccountStrategy implements ServiceStrategy {
           
           setTimeout(() => {
             copyBtn.innerHTML = '📋 テキストをコピー';
-            copyBtn.style.background = '#00c300 !important';
+            copyBtn.style.background = '#16a34a !important';
           }, 2000);
           
         } catch (error) {
