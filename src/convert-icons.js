@@ -18,7 +18,7 @@ async function svgToPng(svgContent, width, height) {
 }
 
 async function convertIconsToPng() {
-  const iconsDir = path.join(process.cwd(), 'src/public/icons')
+  const iconsDir = path.join(process.cwd(), 'public/icons')
   const distIconsDir = path.join(process.cwd(), 'dist/icons')
   const sizes = [16, 48, 128]
   

@@ -24,7 +24,7 @@ const getConfig = (target: string) => {
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/background/index.ts'),
+          entry: resolve(__dirname, 'background/index.ts'),
           name: 'background',
           fileName: 'background',
           formats: ['iife' as const]
@@ -43,7 +43,7 @@ const getConfig = (target: string) => {
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/content-scripts/gmail.entry.ts'),
+          entry: resolve(__dirname, 'content-scripts/gmail.entry.ts'),
           name: 'GmailContentScript',
           fileName: 'content-gmail',
           formats: ['iife' as const]
@@ -62,7 +62,7 @@ const getConfig = (target: string) => {
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/content-scripts/line.entry.ts'),
+          entry: resolve(__dirname, 'content-scripts/line.entry.ts'),
           name: 'LineContentScript',
           fileName: 'content-line',
           formats: ['iife' as const]
@@ -81,7 +81,7 @@ const getConfig = (target: string) => {
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/content-scripts/chatwork.entry.ts'),
+          entry: resolve(__dirname, 'content-scripts/chatwork.entry.ts'),
           name: 'ChatworkContentScript',
           fileName: 'content-chatwork',
           formats: ['iife' as const]
@@ -100,7 +100,7 @@ const getConfig = (target: string) => {
       return {
         ...baseConfig,
         lib: {
-          entry: resolve(__dirname, 'src/content-scripts/google-chat.entry.ts'),
+          entry: resolve(__dirname, 'content-scripts/google-chat.entry.ts'),
           name: 'GoogleChatContentScript',
           fileName: 'content-google-chat',
           formats: ['iife' as const]
@@ -121,7 +121,7 @@ const getConfig = (target: string) => {
         ...baseConfig,
         rollupOptions: {
           input: {
-            popup: resolve(__dirname, 'src/popup/index.html')
+            popup: resolve(__dirname, 'popup/index.html')
           },
           output: {
             entryFileNames: (chunkInfo: { name?: string }) => {
@@ -154,7 +154,7 @@ const getConfig = (target: string) => {
               }
               
               // Application chunks
-              if (id.includes('/src/shared/')) {
+              if (id.includes('/shared/')) {
                 // Shared utilities - separate chunk
                 if (id.includes('/api/') || id.includes('/storage/')) {
                   return 'shared-core';
@@ -189,5 +189,5 @@ export default defineConfig({
     'global': 'globalThis'
   } : {},
   build: getConfig(BUILD_TARGET),
-  publicDir: BUILD_TARGET === 'popup' ? 'src/public' : false
+  publicDir: BUILD_TARGET === 'popup' ? 'public' : false
 })

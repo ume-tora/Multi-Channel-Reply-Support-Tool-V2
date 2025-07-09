@@ -1,0 +1,78 @@
+{
+  "manifest_version": 3,
+  "name": "Multi Channel Reply Support Tool",
+  "version": "0.1.0",
+  "description": "Provides AI-powered reply assistance on Gmail, Chatwork, Google Chat, and LINE Official Account.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://www.chatwork.com/*",
+    "https://chat.google.com/*",
+    "https://manager.line.biz/*",
+    "https://chat.line.biz/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Multi Channel Reply Support",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content-gmail.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://www.chatwork.com/*"],
+      "js": ["content-chatwork.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://chat.google.com/*"],
+      "js": ["content-google-chat.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://manager.line.biz/*",
+        "https://chat.line.biz/*"
+      ],
+      "js": ["content-line.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "popup/*"],
+      "matches": [
+        "https://mail.google.com/*",
+        "https://www.chatwork.com/*",
+        "https://chat.google.com/*",
+        "https://manager.line.biz/*",
+        "https://chat.line.biz/*"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
