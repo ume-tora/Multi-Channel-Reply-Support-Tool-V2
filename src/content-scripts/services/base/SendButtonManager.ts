@@ -290,12 +290,15 @@ export class SendButtonManager {
         console.log(`✅ Strategy ${index + 1} executed successfully`);
         
         // 短時間待機してDOM変化を確認
-        await this.delay(1000);
+        await this.delay(1500);
         
         // 送信成功をクリック後の状態で判定
-        if (await this.verifyClickSuccess()) {
+        const success = await this.verifyClickSuccess();
+        if (success) {
           console.log(`✅ Send button clicked successfully with strategy ${index + 1}`);
           return true;
+        } else {
+          console.log(`⚠️ Strategy ${index + 1} executed but verification failed`);
         }
         
       } catch (error) {
@@ -403,11 +406,70 @@ export class SendButtonManager {
    * クリック成功を検証
    */
   private async verifyClickSuccess(): Promise<boolean> {
-    // 入力欄がクリアされたかチェック
-    const messageInput = document.querySelector('#_chatText, textarea[name="message"]') as HTMLTextAreaElement;
-    if (messageInput && messageInput.value.trim() === '') {
-      console.log('✅ Input field cleared - click success confirmed');
-      return true;
+    console.log('🔍 Verifying click success...');
+    
+    // Google Chatの入力フィールドセレクタ
+    const googleChatSelectors = [
+      'div[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"][aria-label*="message"]',
+      'div[contenteditable="true"][aria-label*="compose"]',
+      'div[contenteditable="true"][data-tab="compose"]'
+    ];
+    
+    // 一般的な入力フィールドセレクタ
+    const generalSelectors = [
+      '#_chatText',
+      'textarea[name="message"]',
+      'input[type="text"]',
+      'textarea'
+    ];
+    
+    const allSelectors = [...googleChatSelectors, ...generalSelectors];
+    
+    for (const selector of allSelectors) {
+      try {
+        const inputs = document.querySelectorAll(selector);
+        for (const input of inputs) {
+          const element = input as HTMLElement;
+          const isEmpty = this.isInputEmpty(element);
+          console.log(`🔍 Checking input with selector '${selector}': isEmpty=${isEmpty}`);
+          
+          if (isEmpty) {
+            console.log('✅ Input field cleared - click success confirmed');
+            return true;
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error checking selector '${selector}':`, error);
+      }
+    }
+    
+    // フォールバック: 送信ボタンが再度無効化されたかチェック
+    const sendButtons = document.querySelectorAll('button[data-testid="send-button"], button[aria-label*="Send"], button[aria-label*="送信"]');
+    for (const button of sendButtons) {
+      const btn = button as HTMLButtonElement;
+      if (btn.disabled) {
+        console.log('✅ Send button disabled - click success confirmed');
+        return true;
+      }
+    }
+    
+    console.log('❌ Click success verification failed');
+    return false;
+  }
+  
+  /**
+   * 入力フィールドが空かチェック
+   */
+  private isInputEmpty(element: HTMLElement): boolean {
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      return element.value.trim() === '';
+    }
+    
+    // contenteditableの場合
+    if (element.contentEditable === 'true') {
+      const text = element.textContent || element.innerText || '';
+      return text.trim() === '';
     }
     
     return false;

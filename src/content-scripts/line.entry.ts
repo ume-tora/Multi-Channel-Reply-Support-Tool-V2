@@ -120,10 +120,7 @@ class LineContentScript {
 
     const button = ButtonFactory.createServiceButton(
       'line-official-account',
-      () => {
-        console.log('🟢 LINE button clicked!');
-        this.handleButtonClick();
-      },
+      () => {}, // 仮のハンドラー
       {
         id: buttonId,
         title: 'AI返信生成 - LINE公式アカウント対応'
@@ -141,7 +138,38 @@ class LineContentScript {
       storageKey: 'line-ai-button-position'
     });
     
+    // ドラッグ対応のクリックイベントを追加
+    this.setupDragAwareClickHandler(button);
+    
     console.log('✅ LINE button with drag & drop injected successfully');
+  }
+  
+  /**
+   * ドラッグ対応のクリックハンドラーを設定
+   */
+  private setupDragAwareClickHandler(button: HTMLElement): void {
+    button.addEventListener('click', (event) => {
+      // ドラッグ中の場合はクリックを無視
+      if (this.dragDropManager?.isDraggingNow()) {
+        console.log('👍 LINE: Click ignored - currently dragging');
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      
+      // ドラッグで移動した後のクリックの場合はクリックを無視
+      if (this.dragDropManager?.didMove()) {
+        console.log('👍 LINE: Click ignored - just moved by drag');
+        this.dragDropManager.resetMoveFlag();
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      
+      // 正常なクリックの場合のみハンドラーを実行
+      console.log('🟢 LINE button clicked!');
+      this.handleButtonClick();
+    });
   }
 
   private async handleButtonClick(): Promise<void> {

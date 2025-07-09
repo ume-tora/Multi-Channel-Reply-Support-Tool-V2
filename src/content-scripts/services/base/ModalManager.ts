@@ -149,11 +149,15 @@ export class ModalManager {
     sendBtn.disabled = true;
 
     try {
+      console.log('🔄 ModalManager: Calling onSend...');
       const success = await onSend(content);
+      console.log(`🎯 ModalManager: onSend returned: ${success}`);
       
       if (success) {
+        console.log('✅ ModalManager: Send success, calling showSendSuccess...');
         this.showSendSuccess(sendBtn, modal);
       } else {
+        console.log('❌ ModalManager: Send failed, calling handleSendFailure...');
         await this.handleSendFailure(sendBtn, modal, content);
       }
     } catch (error) {
@@ -167,13 +171,29 @@ export class ModalManager {
    * 送信成功処理
    */
   private showSendSuccess(sendBtn: HTMLButtonElement, modal: HTMLElement): void {
+    console.log('🎉 showSendSuccess: Starting success handler...');
     sendBtn.innerHTML = '✅ 送信完了';
     sendBtn.style.background = '#34a853 !important';
     console.log('🎉 Send completed successfully, closing modal in 2 seconds');
     
+    // モーダルが存在するか確認
+    if (!modal || !modal.parentElement) {
+      console.error('❌ Modal element not found or already removed');
+      return;
+    }
+    
     setTimeout(() => {
       console.log('🎉 Removing modal after successful send');
-      modal.remove();
+      try {
+        if (modal && modal.parentElement) {
+          modal.remove();
+          console.log('✅ Modal successfully removed');
+        } else {
+          console.warn('⚠️ Modal already removed or not found');
+        }
+      } catch (error) {
+        console.error('❌ Error removing modal:', error);
+      }
     }, 2000);
   }
 

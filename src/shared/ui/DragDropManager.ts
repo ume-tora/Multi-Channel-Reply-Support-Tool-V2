@@ -277,6 +277,8 @@ export class DragDropManager {
     // 位置を保存
     this.savePosition();
     
+    // hasMovedは保持し、次のクリックでリセットされる
+    
     console.log('🎯 Drag ended, position saved');
   }
 
@@ -339,6 +341,29 @@ export class DragDropManager {
     this.element.style.pointerEvents = enabled ? 'auto' : 'none';
   }
 
+  /**
+   * ドラッグで移動したかどうかを確認
+   * クリックイベントで呼び出して使用
+   */
+  public didMove(): boolean {
+    return this.hasMoved;
+  }
+  
+  /**
+   * ムーブフラグをリセット
+   * クリックイベント処理後に呼び出し
+   */
+  public resetMoveFlag(): void {
+    this.hasMoved = false;
+  }
+  
+  /**
+   * ドラッグ中かどうかを確認
+   */
+  public isDraggingNow(): boolean {
+    return this.isDragging;
+  }
+  
   /**
    * クリーンアップ
    */

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:clean && npm run build:icons && npm run build:background && npm run build:content && npm run build:popup",
+    "build": "npm run build:clean && npm run build:background && npm run build:content && npm run build:popup && node post-build.js",
     "build:clean": "rm -rf dist",
     "build:background": "cross-env BUILD_TARGET=background vite build",
     "build:content": "npm run build:content-gmail && npm run build:content-line && npm run build:content-chatwork && npm run build:content-google-chat",

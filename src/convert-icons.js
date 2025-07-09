@@ -33,6 +33,13 @@ async function convertIconsToPng() {
       console.log('📁 Created dist icons directory')
     }
     
+    // 既存のPNGファイルを削除
+    const existingPngs = fs.readdirSync(distIconsDir).filter(file => file.endsWith('.png'))
+    for (const png of existingPngs) {
+      fs.unlinkSync(path.join(distIconsDir, png))
+      console.log(`🗑️ Removed existing ${png}`)
+    }
+    
     // icon.svgを読み込み
     const svgPath = path.join(iconsDir, 'icon.svg')
     console.log('🔍 Looking for icon.svg at:', svgPath)
@@ -69,6 +76,11 @@ async function convertIconsToPng() {
 
 // スクリプトが直接実行された場合
 if (import.meta.url === `file://${process.argv[1]}`) {
+  convertIconsToPng()
+}
+
+// CommonJS互換性のための実行
+if (process.argv[1] && process.argv[1].endsWith('convert-icons.js')) {
   convertIconsToPng()
 }
 

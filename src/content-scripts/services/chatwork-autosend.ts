@@ -68,20 +68,22 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
     this.logInfo('Extracting messages...');
     this.debugMessageStructure();
     
-    const messageTexts = this.extractMessageTexts();
+    const messageData = this.extractMessageData();
     const messages: Message[] = [];
 
-    messageTexts.forEach((text, index) => {
-      if (text.trim() && this.isValidMessageText(text)) {
+    messageData.forEach((data, index) => {
+      if (data.text.trim() && this.isValidMessageText(data.text)) {
         messages.push({
-          author: index === messageTexts.length - 1 ? '最新の送信者' : '過去の送信者',
-          text: text.trim(),
-          timestamp: new Date()
+          author: data.author || `ユーザー${index + 1}`,
+          text: data.text.trim(),
+          timestamp: data.timestamp || new Date()
         });
       }
     });
 
-    this.logInfo(`Extracted ${messages.length} valid messages from ${messageTexts.length} raw texts`);
+    console.log('🔍 Chatwork: Extracted message data:', messageData);
+    console.log('🔍 Chatwork: Processed messages:', messages);
+    this.logInfo(`Extracted ${messages.length} valid messages from ${messageData.length} raw data`);
     
     if (messages.length === 0) {
       this.debugMessageExtractionFailure();
@@ -254,6 +256,34 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
   /**
    * メッセージテキストを抽出
    */
+  private extractMessageData(): Array<{text: string; author?: string; timestamp?: Date}> {
+    const messageData: Array<{text: string; author?: string; timestamp?: Date}> = [];
+    
+    // メッセージコンテナを探す
+    const messageContainers = this.findMessageContainers();
+    
+    messageContainers.forEach(container => {
+      const text = this.extractSingleMessageText(container);
+      if (text) {
+        const author = this.extractAuthorFromContainer(container);
+        const timestamp = this.extractTimestampFromContainer(container);
+        
+        messageData.push({
+          text,
+          author,
+          timestamp
+        });
+      }
+    });
+
+    // 重複を削除（テキストベース）
+    const uniqueData = messageData.filter((data, index, array) => 
+      array.findIndex(d => d.text === data.text) === index
+    );
+    
+    return uniqueData;
+  }
+  
   private extractMessageTexts(): string[] {
     const messageTexts: string[] = [];
     
@@ -756,5 +786,105 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
       width: Math.round(rect.width),
       height: Math.round(rect.height)
     };
+  }
+  
+  /**
+   * コンテナから作成者を抽出
+   */
+  private extractAuthorFromContainer(container: Element): string | null {
+    // 作成者名を探すセレクタ
+    const authorSelectors = [
+      '[class*="name"]',
+      '[class*="author"]',
+      '[class*="user"]',
+      '[class*="sender"]',
+      '.userName',
+      '.member-name',
+      '.message-name',
+      '.chat-name',
+      'strong',
+      'b',
+      '[data-name]',
+      '[data-user]'
+    ];
+    
+    for (const selector of authorSelectors) {
+      const element = container.querySelector(selector);
+      if (element) {
+        const name = element.textContent?.trim();
+        if (name && name.length > 0 && name.length < 50) {
+          console.log(`👥 Found author: ${name} using selector: ${selector}`);
+          return name;
+        }
+      }
+    }
+    
+    // フォールバック: 最初のstrong要素
+    const strongElement = container.querySelector('strong');
+    if (strongElement) {
+      const name = strongElement.textContent?.trim();
+      if (name && name.length > 0 && name.length < 50) {
+        console.log(`👥 Found author (fallback): ${name}`);
+        return name;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * コンテナからタイムスタンプを抽出
+   */
+  private extractTimestampFromContainer(container: Element): Date | null {
+    // タイムスタンプを探すセレクタ
+    const timestampSelectors = [
+      '[class*="time"]',
+      '[class*="date"]',
+      '[class*="timestamp"]',
+      '[data-time]',
+      '[data-date]',
+      '[title*=":"]',
+      'time'
+    ];
+    
+    for (const selector of timestampSelectors) {
+      const element = container.querySelector(selector);
+      if (element) {
+        const timeText = element.textContent?.trim() || element.getAttribute('title') || element.getAttribute('data-time');
+        if (timeText) {
+          const timestamp = this.parseTimestamp(timeText);
+          if (timestamp) {
+            console.log(`🕰️ Found timestamp: ${timestamp.toISOString()} from: ${timeText}`);
+            return timestamp;
+          }
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * タイムスタンプ文字列を解析
+   */
+  private parseTimestamp(timeText: string): Date | null {
+    // よくある時刻形式を解析
+    const patterns = [
+      /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/, // 2024-01-01 12:00:00
+      /\d{2}:\d{2}/, // 12:00
+      /\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}/, // 1月1日 12:00
+      /\d{1,2}\/\d{1,2} \d{1,2}:\d{2}/, // 1/1 12:00
+    ];
+    
+    for (const pattern of patterns) {
+      if (pattern.test(timeText)) {
+        const date = new Date(timeText);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+    }
+    
+    return null;
   }
 }

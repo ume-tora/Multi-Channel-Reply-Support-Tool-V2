@@ -124,10 +124,7 @@ class GmailContentScript {
 
     const button = ButtonFactory.createServiceButton(
       'gmail',
-      () => {
-        console.log('🚀 Gmail button clicked!');
-        this.handleButtonClick();
-      },
+      () => {}, // 仮のハンドラー
       {
         id: buttonId,
         title: 'AI返信生成 - ドラッグ&ドロップ対応'
@@ -145,7 +142,38 @@ class GmailContentScript {
       storageKey: 'gmail-ai-button-position'
     });
     
+    // ドラッグ対応のクリックイベントを追加
+    this.setupDragAwareClickHandler(button);
+    
     console.log('✅ Gmail button with drag & drop injected successfully!');
+  }
+  
+  /**
+   * ドラッグ対応のクリックハンドラーを設定
+   */
+  private setupDragAwareClickHandler(button: HTMLElement): void {
+    button.addEventListener('click', (event) => {
+      // ドラッグ中の場合はクリックを無視
+      if (this.dragDropManager?.isDraggingNow()) {
+        console.log('👍 Gmail: Click ignored - currently dragging');
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      
+      // ドラッグで移動した後のクリックの場合はクリックを無視
+      if (this.dragDropManager?.didMove()) {
+        console.log('👍 Gmail: Click ignored - just moved by drag');
+        this.dragDropManager.resetMoveFlag();
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      
+      // 正常なクリックの場合のみハンドラーを実行
+      console.log('🚀 Gmail button clicked!');
+      this.handleButtonClick();
+    });
   }
 
   private async handleButtonClick(): Promise<void> {

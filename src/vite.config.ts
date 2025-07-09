@@ -189,5 +189,5 @@ export default defineConfig({
     'global': 'globalThis'
   } : {},
   build: getConfig(BUILD_TARGET),
-  publicDir: BUILD_TARGET === 'popup' ? 'public' : false
+  publicDir: 'public'
 })
