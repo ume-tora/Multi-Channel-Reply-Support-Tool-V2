@@ -1,4 +1,4 @@
-import type { ServiceStrategy, Message } from '../interface';
+import type { ServiceStrategy } from '../interface';
 
 /**
  * 自動送信戦略の基底クラス

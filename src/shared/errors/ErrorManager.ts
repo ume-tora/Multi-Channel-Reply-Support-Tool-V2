@@ -5,8 +5,7 @@
 import type { 
   ErrorContext, 
   ErrorResponse, 
-  RecoveryAction,
-  BaseError 
+  RecoveryAction 
 } from './ErrorTypes';
 import { 
   APIError,

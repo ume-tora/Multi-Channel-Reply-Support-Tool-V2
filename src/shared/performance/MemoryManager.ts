@@ -83,7 +83,7 @@ export class MemoryManager {
       try {
         window.gc();
         console.log('MemoryManager: Forced garbage collection');
-      } catch (error) {
+      } catch {
         // Ignore gc errors - not available in all contexts
       }
     }

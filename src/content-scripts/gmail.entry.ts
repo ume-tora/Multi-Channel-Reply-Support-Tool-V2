@@ -199,7 +199,7 @@ class GmailContentScript {
         throw new Error('Extension context invalid');
       }
 
-      const response = await new Promise<any>((resolve, reject) => {
+      const response = await new Promise<{success: boolean; apiKey?: string; error?: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Background communication timeout after 5 seconds'));
         }, 5000);
@@ -234,7 +234,7 @@ class GmailContentScript {
     }
   }
 
-  private async generateReply(apiKey: string, messages: any[]): Promise<any> {
+  private async generateReply(apiKey: string, messages: import('../shared/types').GeminiMessage[]): Promise<{success: boolean; text?: string; error?: string}> {
     try {
       const requestData = {
         type: 'GENERATE_REPLY',
@@ -243,7 +243,7 @@ class GmailContentScript {
         timestamp: Date.now()
       };
       
-      const response = await new Promise<any>((resolve, reject) => {
+      const response = await new Promise<{success: boolean; text?: string; error?: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Background communication timeout after 60 seconds'));
         }, 60000);

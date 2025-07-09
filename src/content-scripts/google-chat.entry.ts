@@ -282,7 +282,7 @@ class GoogleChatContentScript {
         throw new Error('Extension context invalid');
       }
 
-      const response = await new Promise<any>((resolve, reject) => {
+      const response = await new Promise<{success: boolean; apiKey?: string; error?: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Background communication timeout after 5 seconds'));
         }, 5000);
@@ -317,7 +317,7 @@ class GoogleChatContentScript {
     }
   }
 
-  private async generateReplyResponse(apiKey: string, messages: any[]): Promise<any> {
+  private async generateReplyResponse(apiKey: string, messages: import('../shared/types').GeminiMessage[]): Promise<{success: boolean; text?: string; error?: string}> {
     try {
       const requestData = {
         type: 'GENERATE_REPLY',
@@ -326,7 +326,7 @@ class GoogleChatContentScript {
         timestamp: Date.now()
       };
       
-      const response = await new Promise<any>((resolve, reject) => {
+      const response = await new Promise<{success: boolean; text?: string; error?: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Background communication timeout after 60 seconds'));
         }, 60000);
@@ -349,7 +349,7 @@ class GoogleChatContentScript {
     }
   }
 
-  private showReplyModal(apiKey: string, messages: any[]): void {
+  private showReplyModal(apiKey: string, messages: import('../shared/types').ServiceMessage[]): void {
     const modal = document.createElement('div');
     modal.className = 'gemini-reply-modal';
     modal.innerHTML = `
@@ -388,7 +388,7 @@ class GoogleChatContentScript {
 
   private async generateReply(
     apiKey: string, 
-    messages: any[], 
+    messages: import('../shared/types').ServiceMessage[], 
     textarea: HTMLTextAreaElement, 
     button: HTMLButtonElement
   ): Promise<void> {
@@ -407,7 +407,7 @@ class GoogleChatContentScript {
         timestamp: Date.now()
       };
       
-      const response = await new Promise<any>((resolve, reject) => {
+      const response = await new Promise<{success: boolean; text?: string; error?: string}>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Background communication timeout after 60 seconds'));
         }, 60000);

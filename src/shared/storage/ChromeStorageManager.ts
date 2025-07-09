@@ -45,7 +45,7 @@ export class ChromeStorageManager {
   /**
    * Get multiple values from Chrome storage
    */
-  static async getMultiple<T extends Record<string, any>>(keys: StorageKey[]): Promise<Partial<T>> {
+  static async getMultiple<T extends Record<string, unknown>>(keys: StorageKey[]): Promise<Partial<T>> {
     try {
       const result = await chrome.storage.local.get(keys);
       return result as Partial<T>;
@@ -58,7 +58,7 @@ export class ChromeStorageManager {
   /**
    * Set multiple values in Chrome storage
    */
-  static async setMultiple<T extends Record<string, any>>(items: T): Promise<void> {
+  static async setMultiple<T extends Record<string, unknown>>(items: T): Promise<void> {
     try {
       await chrome.storage.local.set(items);
     } catch (error) {
@@ -174,10 +174,10 @@ export class ChromeStorageManager {
         return 0;
       }
 
-      let allData: Record<string, any>;
+      let allData: Record<string, unknown>;
       try {
         allData = await chrome.storage.local.get();
-      } catch (storageError) {
+      } catch {
         console.warn('ChromeStorageManager: Storage access failed during cache cleanup');
         return 0;
       }
@@ -235,7 +235,7 @@ export class ChromeStorageManager {
   /**
    * Check if a cache item is expired
    */
-  private static isCacheItemExpired(value: any, now: number): boolean {
+  private static isCacheItemExpired(value: unknown, now: number): boolean {
     return (
       value &&
       typeof value === 'object' &&
@@ -248,9 +248,9 @@ export class ChromeStorageManager {
   /**
    * Check if error is related to extension context
    */
-  private static isExtensionContextError(error: any): boolean {
-    if (!error?.message) return false;
-    const message = error.message.toLowerCase();
+  private static isExtensionContextError(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('message' in error)) return false;
+    const message = (error as Error).message.toLowerCase();
     return (
       message.includes('extension context invalidated') ||
       message.includes('context invalidated') ||
@@ -322,12 +322,12 @@ export class SettingsStorage {
     return ChromeStorageManager.set('settings.apiKey', apiKey);
   }
 
-  static async getUserSettings(): Promise<Record<string, any>> {
-    const settings = await ChromeStorageManager.get<Record<string, any>>('settings.userSettings');
+  static async getUserSettings(): Promise<Record<string, unknown>> {
+    const settings = await ChromeStorageManager.get<Record<string, unknown>>('settings.userSettings');
     return settings || {};
   }
 
-  static async setUserSettings(settings: Record<string, any>): Promise<void> {
+  static async setUserSettings(settings: Record<string, unknown>): Promise<void> {
     return ChromeStorageManager.set('settings.userSettings', settings);
   }
 

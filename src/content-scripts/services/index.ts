@@ -1,10 +1,8 @@
 export type { ServiceStrategy, Message } from './interface';
 export { GmailStrategy } from './gmail';
-export { GmailSimpleStrategy } from './gmail-simple';
 export { GmailAutoSendStrategy } from './gmail-autosend';
 export { ChatworkStrategy } from './chatwork';
 export { ChatworkAutoSendStrategy } from './chatwork-autosend';
-export { GoogleChatSimpleStrategy } from './google-chat-simple';
 export { GoogleChatAutoSendStrategy } from './google-chat-autosend';
 export { LineOfficialAccountSimpleStrategy as LineOfficialAccountStrategy } from './line-official-account';
 export { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';
@@ -13,7 +11,6 @@ import type { ServiceStrategy } from './interface';
 import { GmailAutoSendStrategy } from './gmail-autosend';
 import { ChatworkStrategy } from './chatwork';
 import { ChatworkAutoSendStrategy } from './chatwork-autosend';
-import { GoogleChatSimpleStrategy } from './google-chat-simple';
 import { GoogleChatAutoSendStrategy } from './google-chat-autosend';
 import { LineOfficialAccountSimpleStrategy } from './line-official-account';
 import { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';

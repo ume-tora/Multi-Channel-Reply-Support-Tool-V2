@@ -50,7 +50,7 @@ export interface GetStorageInfoMessage extends BaseBackgroundMessage {
 
 export interface GenerateReplyMessage extends BaseBackgroundMessage {
   type: 'GENERATE_REPLY';
-  messages: any[];
+  messages: import('./index').GeminiMessage[];
   apiKey: string;
 }
 
@@ -125,7 +125,7 @@ export function isBackgroundMessage(obj: unknown): obj is BackgroundMessage {
     typeof obj === 'object' &&
     obj !== null &&
     'type' in obj &&
-    typeof (obj as any).type === 'string'
+    typeof (obj as BackgroundMessage).type === 'string'
   );
 }
 

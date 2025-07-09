@@ -1,10 +1,7 @@
 import { StorageService } from '../services/storageService';
 import type { 
-  BackgroundMessage, 
-  BackgroundResponse, 
   ChromeRuntimeSender, 
-  ChromeRuntimeSendResponse,
-  InstallationDetails
+  ChromeRuntimeSendResponse
 } from '../shared/types/background';
 import {
   isBackgroundMessage,
@@ -14,8 +11,7 @@ import {
   isSetCachedContextMessage,
   isClearCacheMessage,
   isGetStorageInfoMessage,
-  isGenerateReplyMessage,
-  createBackgroundError
+  isGenerateReplyMessage
 } from '../shared/types/background';
 
 class BackgroundManager {
@@ -139,13 +135,13 @@ class BackgroundManager {
       // 🔍 メッセージ受信の詳細ログ
       console.log('*** BACKGROUND: MESSAGE RECEIVED ***', {
         timestamp: new Date().toISOString(),
-        messageType: typeof message === 'object' && message !== null && 'type' in message ? (message as any).type : 'unknown',
+        messageType: typeof message === 'object' && message !== null && 'type' in message ? (message as {type: string}).type : 'unknown',
         messageKeys: typeof message === 'object' && message !== null ? Object.keys(message) : [],
         sender: _sender
       });
 
       // Handle simple PING messages for Service Worker wake-up
-      if (typeof message === 'object' && message !== null && 'type' in message && (message as any).type === 'PING') {
+      if (typeof message === 'object' && message !== null && 'type' in message && (message as {type: string}).type === 'PING') {
         console.log('Background: Received PING, responding with PONG');
         sendResponse({ 
           success: true, 
@@ -182,14 +178,14 @@ class BackgroundManager {
       } else if (isGenerateReplyMessage(message)) {
         console.log('*** GENERATE_REPLY MESSAGE RECEIVED ***', {
           timestamp: new Date().toISOString(),
-          hasApiKey: !!(message as any).apiKey,
-          apiKeyLength: (message as any).apiKey?.length,
-          hasMessages: !!(message as any).messages,
-          messagesCount: (message as any).messages?.length
+          hasApiKey: !!message.apiKey,
+          apiKeyLength: message.apiKey?.length,
+          hasMessages: !!message.messages,
+          messagesCount: message.messages?.length
         });
         await this.handleGenerateReply(message, sendResponse);
       } else {
-        console.warn('Unknown message type:', message.type || (message as any).action);
+        console.warn('Unknown message type:', message.type);
         sendResponse({ 
           success: false, 
           error: 'Unknown message type',
@@ -214,7 +210,7 @@ class BackgroundManager {
         apiKey,
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to get API key',
@@ -230,7 +226,7 @@ class BackgroundManager {
         success: true,
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to set API key',
@@ -251,7 +247,7 @@ class BackgroundManager {
         context,
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to get cached context',
@@ -272,7 +268,7 @@ class BackgroundManager {
         success: true,
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to set cached context',
@@ -288,7 +284,7 @@ class BackgroundManager {
         success: true,
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to clear cache',
@@ -311,7 +307,7 @@ class BackgroundManager {
         },
         timestamp: Date.now()
       });
-    } catch (error) {
+    } catch {
       sendResponse({ 
         success: false, 
         error: 'Failed to get storage info',
@@ -320,7 +316,7 @@ class BackgroundManager {
     }
   }
 
-  private async handleGenerateReply(message: any, sendResponse: ChromeRuntimeSendResponse): Promise<void> {
+  private async handleGenerateReply(message: import('../shared/types/background').GenerateReplyMessage, sendResponse: ChromeRuntimeSendResponse): Promise<void> {
     // 🔥 CRITICAL: 最強のService Worker keep-alive機能
     const keepAliveInterval = this.setupAdvancedKeepAlive();
     
@@ -600,7 +596,7 @@ class BackgroundManager {
   /**
    * Process messages from long-lived connections
    */
-  private async processMessage(message: any): Promise<any> {
+  private async processMessage(message: unknown): Promise<import('../shared/types/background').BackgroundResponse> {
     if (!isBackgroundMessage(message)) {
       return {
         success: false,
