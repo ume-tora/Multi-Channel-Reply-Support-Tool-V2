@@ -313,7 +313,7 @@ export const GMAIL_CONFIG: ServiceConfig = {
 export const LINE_CONFIG: ServiceConfig = {
   serviceName: 'line-official-account',
   displayName: 'LINE公式アカウント',
-  color: '#00c300',
+  color: '#16a34a',
   
   buttonSelectors: [
     'button[data-testid="send-button"]',

@@ -59,10 +59,9 @@ export class ButtonFactory {
     'line-official-account': {
       padding: '8px 16px',
       borderRadius: '8px',
-      border: '2px solid #00c300',
-      backgroundColor: '#00c300',
+      border: '2px solid #16a34a',
       fontWeight: 'bold',
-      boxShadow: '0 4px 12px rgba(0, 195, 0, 0.3)',
+      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)',
       width: '140px',
       height: '40px',
       textAlign: 'center' as const

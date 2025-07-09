@@ -47,7 +47,7 @@ class GoogleChatContentScript {
         align-items: center;
         gap: 6px;
         padding: 8px 12px;
-        background: linear-gradient(135deg, #1a73e8, #1557b0);
+        background: linear-gradient(135deg, #16a34a, #15803d);
         color: white;
         border: none;
         border-radius: 6px;
@@ -56,15 +56,15 @@ class GoogleChatContentScript {
         cursor: pointer;
         transition: all 0.2s ease;
         margin: 0 8px;
-        box-shadow: 0 2px 4px rgba(26, 115, 232, 0.2);
+        box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
         z-index: 1000;
         position: relative;
       }
       
       .gemini-reply-button:hover {
-        background: linear-gradient(135deg, #1557b0, #0d47a1);
+        background: linear-gradient(135deg, #15803d, #166534);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(26, 115, 232, 0.3);
+        box-shadow: 0 4px 8px rgba(22, 163, 74, 0.3);
       }
       
       .gemini-reply-button:disabled {
