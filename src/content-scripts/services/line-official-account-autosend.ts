@@ -84,36 +84,195 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
     console.log('📝 LINE AutoSend: Extracting messages...');
     
     const messages: Message[] = [];
-    const targetMessages = ['テスト', 'サロンに入会したいです！'];
-    const allElements = document.querySelectorAll('div, span, p');
     
-    for (const element of Array.from(allElements)) {
-      const text = element.textContent?.trim();
-      if (text && targetMessages.includes(text)) {
-        messages.push({
-          author: 'お客様',
-          text: text
-        });
-        console.log(`✅ Found message: "${text}"`);
+    // LINEチャット画面の一般的なメッセージ構造を検索
+    const messageSelectors = [
+      // LINE Official Account Manager の一般的なセレクタ
+      '[data-testid*="message"]',
+      '[data-testid*="chat-message"]',
+      '.chat-message',
+      '.message-item',
+      '.message-content',
+      '.msg-content',
+      // メッセージコンテナの一般的なクラス
+      '.message-bubble',
+      '.chat-bubble',
+      '.conversation-message',
+      '.line-message',
+      // より汎用的なアプローチ
+      '[role="group"] [role="textbox"]',
+      '[data-qa*="message"]',
+      '[aria-label*="message"]'
+    ];
+    
+    // 各セレクタを試してメッセージを検索
+    for (const selector of messageSelectors) {
+      const messageElements = document.querySelectorAll(selector);
+      console.log(`🔍 Trying selector "${selector}": found ${messageElements.length} elements`);
+      
+      if (messageElements.length > 0) {
+        for (const element of Array.from(messageElements)) {
+          const messageData = this.extractMessageFromElement(element);
+          if (messageData) {
+            messages.push(messageData);
+          }
+        }
+        
+        if (messages.length > 0) {
+          console.log(`✅ Successfully extracted messages using selector: ${selector}`);
+          break;
+        }
       }
     }
-
+    
+    // フォールバック: より広範囲で検索
     if (messages.length === 0) {
-      for (const element of Array.from(allElements)) {
-        const text = element.textContent?.trim();
-        if (text && text.length >= 3 && text.length <= 100 && 
-            !this.isSystemText(text)) {
+      console.log('🔄 Fallback: Searching in all text elements...');
+      messages.push(...this.fallbackMessageExtraction());
+    }
+    
+    // 重複を除去し、最新の5件に制限
+    const uniqueMessages = this.removeDuplicateMessages(messages);
+    const latestMessages = uniqueMessages.slice(-5);
+    
+    console.log(`📝 Final extracted ${latestMessages.length} messages:`);
+    latestMessages.forEach((msg, index) => {
+      console.log(`  ${index + 1}. [${msg.author}] ${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}`);
+    });
+    
+    return latestMessages;
+  }
+  
+  /**
+   * 要素からメッセージデータを抽出
+   */
+  private extractMessageFromElement(element: Element): Message | null {
+    const text = element.textContent?.trim();
+    
+    if (!text || text.length < 2 || text.length > 500) {
+      return null;
+    }
+    
+    if (this.isSystemText(text)) {
+      return null;
+    }
+    
+    // メッセージの送信者を判定（LINEの一般的な構造から推測）
+    const author = this.determineMessageAuthor(element);
+    
+    return {
+      author,
+      text
+    };
+  }
+  
+  /**
+   * メッセージの送信者を判定
+   */
+  private determineMessageAuthor(element: Element): string {
+    // 要素やその親要素のクラス・属性から送信者を判定
+    const elementStr = element.outerHTML.toLowerCase();
+    const parentStr = element.parentElement?.outerHTML.toLowerCase() || '';
+    
+    // 自分のメッセージを示すキーワード
+    const selfIndicators = [
+      'me', 'self', 'own', 'sent', 'outgoing', 'right',
+      'agent', 'staff', 'admin', 'sender'
+    ];
+    
+    // お客様のメッセージを示すキーワード
+    const customerIndicators = [
+      'other', 'customer', 'user', 'incoming', 'left',
+      'guest', 'visitor', 'client'
+    ];
+    
+    // クラス名や属性から判定
+    for (const indicator of selfIndicators) {
+      if (elementStr.includes(indicator) || parentStr.includes(indicator)) {
+        return '自分';
+      }
+    }
+    
+    for (const indicator of customerIndicators) {
+      if (elementStr.includes(indicator) || parentStr.includes(indicator)) {
+        return 'お客様';
+      }
+    }
+    
+    // 位置による判定（右寄せ = 自分、左寄せ = お客様）
+    const computedStyle = window.getComputedStyle(element);
+    const textAlign = computedStyle.textAlign;
+    const marginLeft = parseInt(computedStyle.marginLeft || '0');
+    const marginRight = parseInt(computedStyle.marginRight || '0');
+    
+    if (textAlign === 'right' || marginLeft > marginRight) {
+      return '自分';
+    }
+    
+    // デフォルトはお客様として扱う
+    return 'お客様';
+  }
+  
+  /**
+   * フォールバック: より広範囲でメッセージを検索
+   */
+  private fallbackMessageExtraction(): Message[] {
+    console.log('🔄 Performing fallback message extraction...');
+    
+    const messages: Message[] = [];
+    const allTextElements = document.querySelectorAll('div, span, p, td, li');
+    
+    for (const element of Array.from(allTextElements)) {
+      const text = element.textContent?.trim();
+      
+      if (text && 
+          text.length >= 3 && 
+          text.length <= 200 && 
+          !this.isSystemText(text) &&
+          !this.isNavigationText(text)) {
+        
+        // 既に同じテキストが存在するかチェック
+        if (!messages.some(msg => msg.text === text)) {
           messages.push({
             author: 'お客様',
             text: text
           });
-          if (messages.length >= 3) break;
         }
+        
+        // 最大10件まで
+        if (messages.length >= 10) break;
       }
     }
-
-    console.log(`📝 Extracted ${messages.length} messages`);
-    return messages.slice(-5);
+    
+    return messages;
+  }
+  
+  /**
+   * 重複メッセージを除去
+   */
+  private removeDuplicateMessages(messages: Message[]): Message[] {
+    const seen = new Set<string>();
+    return messages.filter(msg => {
+      const key = `${msg.author}:${msg.text}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
+  
+  /**
+   * ナビゲーション系のテキストかチェック
+   */
+  private isNavigationText(text: string): boolean {
+    const navPhrases = [
+      'ホーム', 'チャット', '設定', '通知', 'メニュー', 'ログアウト',
+      'プロフィール', 'アカウント', 'ダッシュボード', '管理', '分析',
+      'リッチメニュー', 'ボタン', 'カード', 'フレックス', 'クーポン'
+    ];
+    
+    return navPhrases.some(phrase => text.includes(phrase));
   }
 
   /**
@@ -123,11 +282,39 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
     const systemPhrases = [
       'LINE', 'Official Account', 'スタンプ', '画像', 'ファイル', 
       '通話', '既読', 'ホーム', 'チャット', '設定', '検索',
-      '送信', 'Enter', 'Shift', 'すべて', 'ヘルプ'
+      '送信', 'Enter', 'Shift', 'すべて', 'ヘルプ', 'ボタン',
+      'メニュー', 'ログイン', 'ログアウト', 'リロード', '更新',
+      'コピー', '貼り付け', '削除', '編集', '保存', 'キャンセル',
+      '確認', '承認', '拒否', '戻る', '進む', '閉じる', '開く',
+      'アップロード', 'ダウンロード', '印刷', '共有', 'エクスポート',
+      'インポート', '同期', 'バックアップ', '復元', 'リセット'
     ];
     
+    // 時刻パターン (HH:MM, H:MM)
+    const timePattern = /^\d{1,2}:\d{2}$/;
+    
+    // 日付パターン (YYYY/MM/DD, MM/DD等)
+    const datePattern = /^\d{1,4}[\/\-]\d{1,2}([\/\-]\d{1,4})?$/;
+    
+    // 数字のみ (ID等)
+    const numbersOnly = /^\d+$/;
+    
+    // 非常に短いテキスト (単一文字、記号等)
+    const tooShort = text.length <= 1;
+    
+    // HTMLタグが含まれている
+    const hasHtmlTags = /<[^>]*>/.test(text);
+    
+    // URLパターン
+    const urlPattern = /https?:\/\/|www\./;
+    
     return systemPhrases.some(phrase => text.includes(phrase)) ||
-           /^\d{1,2}:\d{2}$/.test(text);
+           timePattern.test(text) ||
+           datePattern.test(text) ||
+           numbersOnly.test(text) ||
+           tooShort ||
+           hasHtmlTags ||
+           urlPattern.test(text);
   }
 
   /**
