@@ -176,11 +176,11 @@ export async function handleStorageOperation<T>(
 /**
  * Wrap a function with error handling
  */
-export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
+export function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   context: Omit<ErrorContext, 'timestamp'>
 ): T {
-  return (async (...args: any[]) => {
+  return (async (...args: unknown[]) => {
     try {
       return await fn(...args);
     } catch (error) {
@@ -208,7 +208,7 @@ export function createError(
     case 'storage':
       return new StorageError(message, 'get', undefined, context);
     case 'service':
-      return new ServiceError(message, (context?.service as any) || 'gmail', 'unknown', true, context);
+      return new ServiceError(message, (context?.service as string) || 'gmail', 'unknown', true, context);
     case 'network':
       return new NetworkError(message, 'connection', context);
     case 'permission':

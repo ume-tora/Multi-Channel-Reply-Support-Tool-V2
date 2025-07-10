@@ -282,7 +282,7 @@ export class LineOfficialAccountSimpleStrategy implements ServiceStrategy {
    * スレッドIDを取得
    */
   getThreadId(): string | null {
-    const match = window.location.pathname.match(/\/chat\/([^\/]+)/);
+    const match = window.location.pathname.match(/\/chat\/([^/]+)/);
     return match ? match[1] : null;
   }
 }

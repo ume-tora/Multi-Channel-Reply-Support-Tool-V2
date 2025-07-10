@@ -465,8 +465,8 @@ class ChatworkContentScript {
 const chatworkScript = new ChatworkContentScript();
 
 // デバッグ用：グローバルにアクセス可能にする
-(window as any).chatworkScript = chatworkScript;
-(window as any).chatworkStrategy = chatworkScript['strategy'];
+(window as Window & { chatworkScript?: typeof chatworkScript; chatworkStrategy?: typeof chatworkScript['strategy'] }).chatworkScript = chatworkScript;
+(window as Window & { chatworkScript?: typeof chatworkScript; chatworkStrategy?: typeof chatworkScript['strategy'] }).chatworkStrategy = chatworkScript['strategy'];
 
 console.log('🔧 Debug helpers available:');
 console.log('🔧 - window.chatworkScript: Main script instance');

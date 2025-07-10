@@ -1,4 +1,5 @@
 import type { ServiceStrategy } from '../interface';
+import { errorNotificationService } from '../../../shared/errors/ErrorNotificationService';
 
 /**
  * 自動送信戦略の基底クラス
@@ -87,6 +88,8 @@ export abstract class BaseAutoSendStrategy implements ServiceStrategy {
 
       setTimeout(() => {
         observer.disconnect();
+        // DOM構造変更の可能性を通知
+        errorNotificationService.showDOMError(this.getServiceName());
         resolve(null);
       }, timeout);
     });
@@ -141,7 +144,7 @@ export abstract class BaseAutoSendStrategy implements ServiceStrategy {
   /**
    * エラーを安全にログ出力
    */
-  protected logError(context: string, error: any): void {
+  protected logError(context: string, error: unknown): void {
     console.error(`❌ ${this.getServiceName()} ${context}:`, error);
   }
 

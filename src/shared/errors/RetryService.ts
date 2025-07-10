@@ -2,7 +2,7 @@
  * Retry Service for handling failed operations with exponential backoff
  */
 
-import { APIError, NetworkError, isAPIError, isNetworkError } from './ErrorTypes';
+import { isAPIError, isNetworkError } from './ErrorTypes';
 
 // === Retry Configuration ===
 
@@ -170,12 +170,7 @@ export class RetryService {
    * Retry with exponential backoff and circuit breaker pattern
    */
   static async withCircuitBreaker<T>(
-    operation: () => Promise<T>,
-    circuitBreakerOptions: {
-      failureThreshold?: number;
-      resetTimeout?: number;
-      monitoringPeriod?: number;
-    } = {}
+    operation: () => Promise<T>
   ): Promise<T> {
     // Implementation would include circuit breaker logic
     // For now, just use regular retry
@@ -247,14 +242,14 @@ export function shouldRetryError(error: unknown, maxAttempts: number = 3, curren
 // === Retry Decorators ===
 
 export function retryable(options: RetryOptions = {}) {
-  return function <T extends (...args: any[]) => Promise<any>>(
-    target: any,
+  return function <T extends (...args: unknown[]) => Promise<unknown>>(
+    target: unknown,
     propertyName: string,
     descriptor: TypedPropertyDescriptor<T>
   ) {
     const method = descriptor.value!;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       return RetryService.withRetry(
         () => method.apply(this, args),
         options

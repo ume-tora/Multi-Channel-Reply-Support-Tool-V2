@@ -290,7 +290,7 @@ class GoogleChatContentScript {
       if (response.success && response.text) {
         // AutoSendStrategyのshowModalメソッドを使用
         if (this.strategy && 'showModal' in this.strategy) {
-          (this.strategy as any).showModal(response.text);
+          (this.strategy as unknown as { showModal: (text: string) => void }).showModal(response.text);
         } else {
           console.warn('AutoSend modal functionality not available, falling back to simple modal');
           this.showReplyModal(apiKey, messages);

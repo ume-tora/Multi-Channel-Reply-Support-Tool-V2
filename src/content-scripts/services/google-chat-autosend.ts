@@ -357,7 +357,7 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
     const uniqueButtonSelectors = [...new Set(buttonSelectors)];
     console.log(`🔍 Using selectors: ${uniqueButtonSelectors.join(', ')}`);
 
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
         console.error('💥 Auto-send timed out', new Error(`Send process did not complete within ${SEND_TIMEOUT}ms`));
         resolve(false);
@@ -391,32 +391,33 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
           }
         });
         
-        const success = await this.sendButtonManager.findAndClickSendButton(
+        this.sendButtonManager.findAndClickSendButton(
           uniqueButtonSelectors
-        );
-        
-        clearTimeout(timeoutId);
+        ).then(async (success) => {
+          clearTimeout(timeoutId);
 
-        if (success) {
-          console.log('✅ Auto-send completed successfully');
-          // 送信完了を確認するための追加待機時間
-          await new Promise(resolve => setTimeout(resolve, 500));
-          resolve(true);
-        } else {
-          console.warn('⚠️ Auto-send verification failed, but message may have been sent');
-          
-          // Google Chatの場合、送信は成功している可能性が高い
-          // UIが更新されたかどうかで最終的に判定
-          const finalCheck = await this.performFinalSuccessCheck();
-          if (finalCheck) {
-            console.log('✅ Final check passed - treating as successful');
+          if (success) {
+            console.log('✅ Auto-send completed successfully');
+            // 送信完了を確認するための追加待機時間
+            await new Promise(resolve => setTimeout(resolve, 500));
             resolve(true);
           } else {
-            console.error('❌ Auto-send failed: Could not find or click the send button');
-            this.debugSendButtonFailure();
-            resolve(false);
+            console.warn('⚠️ Auto-send verification failed, but message may have been sent');
+            
+            // Google Chatの場合、送信は成功している可能性が高い
+            // UIが更新されたかどうかで最終的に判定
+            this.performFinalSuccessCheck().then((finalCheck) => {
+              if (finalCheck) {
+                console.log('✅ Final check passed - treating as successful');
+                resolve(true);
+              } else {
+                console.error('❌ Auto-send failed: Could not find or click the send button');
+                this.debugSendButtonFailure();
+                resolve(false);
+              }
+            });
           }
-        }
+        });
       } catch (error) {
         clearTimeout(timeoutId);
         console.error('💥 Auto-send exception:', error);
@@ -541,7 +542,7 @@ export class GoogleChatAutoSendStrategy extends BaseAutoSendStrategy {
       try {
         const elements = document.querySelectorAll(selector);
         maxCount = Math.max(maxCount, elements.length);
-      } catch (error) {
+      } catch {
         // セレクタエラーは無視
       }
     }

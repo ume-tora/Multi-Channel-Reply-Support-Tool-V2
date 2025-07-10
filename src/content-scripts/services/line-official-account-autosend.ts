@@ -294,7 +294,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
     const timePattern = /^\d{1,2}:\d{2}$/;
     
     // 日付パターン (YYYY/MM/DD, MM/DD等)
-    const datePattern = /^\d{1,4}[\/\-]\d{1,2}([\/\-]\d{1,4})?$/;
+    const datePattern = /^\d{1,4}[/-]\d{1,2}([/-]\d{1,4})?$/;
     
     // 数字のみ (ID等)
     const numbersOnly = /^\d+$/;
@@ -480,7 +480,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
         copyBtn.style.background = '#28a745 !important';
         
         setTimeout(() => modal.remove(), 1500);
-      } catch (error) {
+      } catch {
         copyBtn.innerHTML = '❌ コピー失敗';
         copyBtn.style.background = '#dc3545 !important';
       }
@@ -509,7 +509,7 @@ export class LineOfficialAccountAutoSendStrategy implements ServiceStrategy {
    * スレッドIDを取得
    */
   getThreadId(): string | null {
-    const match = window.location.pathname.match(/\/chat\/([^\/]+)/);
+    const match = window.location.pathname.match(/\/chat\/([^/]+)/);
     return match ? match[1] : null;
   }
 }

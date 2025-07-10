@@ -9,6 +9,7 @@ import type {
   GeminiResponse,
   ServiceMessage
 } from '../types';
+import { errorNotificationService } from '../errors/ErrorNotificationService';
 
 export class GeminiAPIClient {
   private static readonly API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
@@ -115,9 +116,20 @@ export class GeminiAPIClient {
         const result = await this.generateReplyFromTextWithTimeout(conversationText, attemptConfig, timeout);
         
         console.log(`✅ GeminiAPI: Success on attempt ${attempt}`);
+        
+        // Show success notification for retry recovery
+        if (attempt > 1) {
+          errorNotificationService.showSuccess(`接続が復旧しました (${attempt}回目で成功)`);
+        }
+        
         return result;
       } catch (error) {
         console.error(`❌ GeminiAPI: Attempt ${attempt} failed:`, error.message);
+        
+        // Show user-friendly error notification on first attempt
+        if (attempt === 1) {
+          errorNotificationService.showAPIError(error);
+        }
         
         // Don't retry on authentication errors
         if (error.message.includes('401') || error.message.includes('403') || error.message.includes('API key')) {
@@ -166,8 +178,7 @@ export class GeminiAPIClient {
    */
   private static async generateReplyWithTimeout(
     messages: GeminiMessage[], 
-    config: GeminiConfig,
-    timeoutMs: number
+    config: GeminiConfig
   ): Promise<string> {
     try {
       this.validateConfig(config);

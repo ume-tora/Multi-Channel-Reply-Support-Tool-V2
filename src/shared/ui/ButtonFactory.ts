@@ -164,7 +164,7 @@ export class ButtonFactory {
   /**
    * Apply styles to button element
    */
-  private static applyStyles(button: HTMLElement, styles: Record<string, any>): void {
+  private static applyStyles(button: HTMLElement, styles: Record<string, string>): void {
     Object.entries(styles).forEach(([property, value]) => {
       // Convert camelCase to kebab-case for CSS properties
       const cssProperty = property.replace(/([A-Z])/g, '-$1').toLowerCase();

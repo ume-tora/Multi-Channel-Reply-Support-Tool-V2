@@ -113,7 +113,7 @@ export interface GeminiResponse {
 
 export type StorageKey = 'settings.apiKey' | 'settings.userSettings' | string;
 
-export interface StorageItem<T = any> {
+export interface StorageItem<T = unknown> {
   value: T;
   expiresAt?: number;
 }
@@ -145,7 +145,7 @@ export interface ConversationContext {
   };
 }
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   data: T;
   timestamp: number;
   expiresAt: number;
@@ -159,7 +159,7 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
-  details?: any;
+  details?: unknown;
   timestamp?: number;
 }
 
@@ -213,14 +213,14 @@ export interface NotificationConfig {
 export interface ServiceEvent {
   type: 'button-injected' | 'reply-generated' | 'error' | 'context-extracted';
   service: ServiceType;
-  data?: any;
+  data?: unknown;
   timestamp: number;
 }
 
 export interface StorageEvent {
   type: 'settings-updated' | 'cache-cleared' | 'storage-full';
   key?: string;
-  data?: any;
+  data?: unknown;
   timestamp: number;
 }
 
@@ -236,7 +236,7 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 // === Type Guards ===
 
-export function isServiceMessage(obj: any): obj is ServiceMessage {
+export function isServiceMessage(obj: unknown): obj is ServiceMessage {
   return (
     obj &&
     typeof obj === 'object' &&
@@ -246,7 +246,7 @@ export function isServiceMessage(obj: any): obj is ServiceMessage {
   );
 }
 
-export function isGeminiMessage(obj: any): obj is GeminiMessage {
+export function isGeminiMessage(obj: unknown): obj is GeminiMessage {
   return (
     obj &&
     typeof obj === 'object' &&
@@ -256,11 +256,11 @@ export function isGeminiMessage(obj: any): obj is GeminiMessage {
   );
 }
 
-export function isServiceType(value: any): value is ServiceType {
+export function isServiceType(value: unknown): value is ServiceType {
   return value === 'gmail' || value === 'chatwork' || value === 'google-chat' || value === 'line-official-account';
 }
 
-export function isApiError(obj: any): obj is ApiError {
+export function isApiError(obj: unknown): obj is ApiError {
   return (
     obj &&
     typeof obj === 'object' &&

@@ -1,5 +1,6 @@
 import { ChromeStorageManager, SettingsStorage } from '../shared/storage/ChromeStorageManager';
 import type { ConversationContext, UserSettings } from '../shared/types';
+import { errorNotificationService } from '../shared/errors/ErrorNotificationService';
 
 /**
  * Legacy StorageService class - now uses ChromeStorageManager internally
@@ -13,15 +14,30 @@ export class StorageService {
   }
 
   static async setApiKey(apiKey: string): Promise<void> {
-    return SettingsStorage.setApiKey(apiKey);
+    try {
+      return await SettingsStorage.setApiKey(apiKey);
+    } catch (error) {
+      errorNotificationService.showStorageError(error);
+      throw error;
+    }
   }
 
   static async getUserSettings(): Promise<UserSettings> {
-    return SettingsStorage.getUserSettings();
+    try {
+      return await SettingsStorage.getUserSettings();
+    } catch (error) {
+      console.warn('Settings load error:', error);
+      return {};
+    }
   }
 
   static async setUserSettings(settings: UserSettings): Promise<void> {
-    return SettingsStorage.setUserSettings(settings);
+    try {
+      return await SettingsStorage.setUserSettings(settings);
+    } catch (error) {
+      errorNotificationService.showStorageError(error);
+      throw error;
+    }
   }
 
   // Cache management

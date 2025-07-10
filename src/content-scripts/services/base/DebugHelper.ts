@@ -233,12 +233,14 @@ export class DebugHelper {
    */
   logMemoryUsage(context: string): void {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      console.log(`💾 Memory usage at ${context}:`, {
-        used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
-        total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
-        limit: `${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)}MB`
-      });
+      const memory = (performance as Performance & { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+      if (memory) {
+        console.log(`💾 Memory usage at ${context}:`, {
+          used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
+          total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
+          limit: `${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)}MB`
+        });
+      }
     }
   }
 

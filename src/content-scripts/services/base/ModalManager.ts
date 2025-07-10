@@ -202,8 +202,7 @@ export class ModalManager {
    */
   private async handleSendFailure(
     sendBtn: HTMLButtonElement,
-    modal: HTMLElement,
-    content: string
+    modal: HTMLElement
   ): Promise<void> {
     console.log('⚠️ Send reported as failed, starting fallback verification...');
     

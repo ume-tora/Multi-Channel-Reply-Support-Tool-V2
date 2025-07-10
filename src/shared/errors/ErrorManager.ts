@@ -14,10 +14,6 @@ import {
   StorageQuotaError,
   ServiceError,
   DOMError,
-  NetworkError,
-  PermissionError,
-  UIError,
-  ValidationError,
   ErrorSeverity,
   getErrorSeverity,
   isRecoverableError,
@@ -217,7 +213,7 @@ export class UnifiedErrorManager {
     return actions;
   }
 
-  private getStorageErrorRecoveryActions(error: StorageError, context: ErrorContext): RecoveryAction[] {
+  private getStorageErrorRecoveryActions(error: StorageError): RecoveryAction[] {
     const actions: RecoveryAction[] = [];
 
     if (error instanceof StorageQuotaError) {

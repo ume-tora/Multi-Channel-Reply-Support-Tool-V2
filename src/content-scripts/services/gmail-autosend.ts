@@ -953,7 +953,7 @@ export class GmailAutoSendStrategy implements ServiceStrategy {
    * スレッドIDを取得
    */
   getThreadId(): string | null {
-    const match = window.location.hash.match(/#.*\/([^\/]+)$/);
+    const match = window.location.hash.match(/#.*\/([^/]+)$/);
     return match ? match[1] : null;
   }
 }

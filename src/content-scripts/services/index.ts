@@ -9,10 +9,8 @@ export { LineOfficialAccountAutoSendStrategy } from './line-official-account-aut
 
 import type { ServiceStrategy } from './interface';
 import { GmailAutoSendStrategy } from './gmail-autosend';
-import { ChatworkStrategy } from './chatwork';
 import { ChatworkAutoSendStrategy } from './chatwork-autosend';
 import { GoogleChatAutoSendStrategy } from './google-chat-autosend';
-import { LineOfficialAccountSimpleStrategy } from './line-official-account';
 import { LineOfficialAccountAutoSendStrategy } from './line-official-account-autosend';
 
 export function createServiceStrategy(url: string): ServiceStrategy | null {

@@ -239,7 +239,7 @@ export class ErrorLogger {
       entry.error = {
         name: error.name,
         message: error.message,
-        code: (error as any).code,
+        code: (error as Error & { code?: string }).code,
       };
 
       if (this.options.includeStackTrace) {
@@ -377,7 +377,7 @@ export class ErrorLogger {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private isValidLogEntry(entry: any): entry is LogEntry {
+  private isValidLogEntry(entry: unknown): entry is LogEntry {
     return (
       entry &&
       typeof entry === 'object' &&

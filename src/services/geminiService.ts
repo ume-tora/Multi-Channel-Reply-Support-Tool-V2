@@ -45,7 +45,7 @@ export class GeminiService {
     return GeminiAPIClient.testConnection(apiKey);
   }
 
-  private static handleApiError(error: any): ApiError {
+  private static handleApiError(error: unknown): ApiError {
     if (error instanceof Error) {
       return {
         message: error.message,

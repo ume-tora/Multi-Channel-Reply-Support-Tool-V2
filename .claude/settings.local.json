@@ -27,7 +27,8 @@
       "Bash(npx eslint:*)",
       "Bash(rg:*)",
       "Bash(npx tsc:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(powershell.exe:*)"
     ],
     "deny": []
   }

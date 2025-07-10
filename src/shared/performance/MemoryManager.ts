@@ -95,19 +95,21 @@ export class MemoryManager {
   async getMemoryStats(): Promise<MemoryStats> {
     try {
       // Use performance.memory if available (Chrome)
-      if ('memory' in performance && (performance as any).memory) {
-        const memory = (performance as any).memory;
-        const used = memory.usedJSHeapSize;
-        const total = memory.totalJSHeapSize;
-        const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
-        
-        return {
-          used,
-          total,
-          percentage,
-          warning: percentage > this.MEMORY_WARNING_THRESHOLD,
-          critical: percentage > this.MEMORY_CRITICAL_THRESHOLD
-        };
+      if ('memory' in performance) {
+        const memory = (performance as Performance & { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+        if (memory) {
+          const used = memory.usedJSHeapSize;
+          const total = memory.totalJSHeapSize;
+          const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
+          
+          return {
+            used,
+            total,
+            percentage,
+            warning: percentage > this.MEMORY_WARNING_THRESHOLD,
+            critical: percentage > this.MEMORY_CRITICAL_THRESHOLD
+          };
+        }
       }
       
       // Fallback: estimate based on cleanup tasks and storage
@@ -243,7 +245,7 @@ export class MemoryManager {
    */
   destroy(): void {
     this.cleanup();
-    MemoryManager.instance = null as any;
+    MemoryManager.instance = null;
   }
 }
 

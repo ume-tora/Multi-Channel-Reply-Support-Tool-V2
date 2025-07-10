@@ -241,7 +241,7 @@ export class DragDropManager {
     this.element.style.top = `${newY}px`;
   }
 
-  private onMouseUp(e: MouseEvent): void {
+  private onMouseUp(): void {
     if (this.isDragging) {
       this.endDrag();
     } else {
@@ -251,7 +251,7 @@ export class DragDropManager {
     }
   }
 
-  private onTouchEnd(e: TouchEvent): void {
+  private onTouchEnd(): void {
     if (this.isDragging) {
       this.endDrag();
     } else {

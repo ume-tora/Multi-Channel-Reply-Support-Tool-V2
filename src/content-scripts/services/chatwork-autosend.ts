@@ -168,7 +168,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
           this.logInfo(`Found ${visibleElements.length} visible elements with: ${selector}`);
           return true;
         }
-      } catch (error) {
+      } catch {
         // セレクタエラーは無視
       }
     }
@@ -351,7 +351,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
             return validElements;
           }
         }
-      } catch (error) {
+      } catch {
         // セレクタエラーは無視
       }
     }
@@ -398,7 +398,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
       .replace(/\s+/g, ' ')
       .replace(/^(TO|From|送信者|宛先)[:：]\s*/i, '')
       .replace(/^\d{1,2}:\d{2}\s*/, '')
-      .replace(/^[\d\/\-\s]+\s*/, '')
+      .replace(/^[\d/-\s]+\s*/, '')
       .trim();
   }
 
@@ -418,7 +418,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
       /^(TO|From|送信者|宛先|時刻|日付)[:：]/,
       /^(送信|キャンセル|削除|編集|返信|転送)/,
       /^\d+$/,
-      /^[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/,
+      /^[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+$/,
       /^(はい|いいえ|yes|no|ok|ng)$/i,
       /^\s*$/
     ];
@@ -552,7 +552,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
       try {
         const elements = document.querySelectorAll(selector);
         console.log(`  ${selector}: ${elements.length} found`);
-      } catch (error) {
+      } catch {
         console.log(`  ${selector}: Error`);
       }
     });
@@ -587,7 +587,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
           const first = elements[0] as HTMLElement;
           console.log(`   Type: ${first.tagName}, Visible: ${this.isElementVisible(first)}`);
         }
-      } catch (error) {
+      } catch {
         console.log(`${index + 1}. ${selector}: Error`);
       }
     });
@@ -635,7 +635,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
         if (elements.length > 0) {
           console.log(`${index + 1}. ${selector}: ${elements.length} found`);
         }
-      } catch (error) {
+      } catch {
         console.log(`${index + 1}. ${selector}: Error`);
       }
     });
@@ -665,7 +665,7 @@ export class ChatworkAutoSendStrategy extends BaseAutoSendStrategy {
           const text = first.textContent?.trim() || '';
           console.log(`  Sample: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
         }
-      } catch (error) {
+      } catch {
         console.log(`${selector}: Error`);
       }
     });
