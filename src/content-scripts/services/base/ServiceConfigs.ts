@@ -36,10 +36,10 @@ export const CHATWORK_CONFIG: ServiceConfig = {
     'input[type="submit"]:not([disabled]):not([class*="file"]):not([class*="attach"])',
     
     // React/Vue.js系の動的セレクタ (確実性重視)
-    'div[role="button"]:has-text("送信")',
-    'div[role="button"]:has-text("Send")',
-    'button:has-text("送信")',
-    'button:has-text("Send")',
+    'div[role="button"][aria-label*="送信"]',
+    'div[role="button"][aria-label*="Send"]',
+    'button[aria-label*="送信"]',
+    'button[aria-label*="Send"]',
     'button[class*="send-button"]',
     'button[class*="SendButton"]',
     'button[class*="submit-button"]',
@@ -82,16 +82,14 @@ export const CHATWORK_CONFIG: ServiceConfig = {
     // 現代的なSPA構造対応
     'div[role="button"][data-action="send"]',
     'span[role="button"][data-action="send"]',
-    'button:has-text("送信")',
-    'button:has-text("Send")',
-    'button:has-text("投稿")',
-    'button:has-text("Post")',
+    'button[value*="送信"]',
+    'button[value*="Send"]',
+    'button[value*="投稿"]',
+    'button[value*="Post"]',
     
-    // 汎用セレクタ (最後の手段)
-    'button:contains("送信")',
-    'button:contains("Send")',
-    'input[type="submit"]:contains("送信")',
-    'input[type="submit"]:contains("Send")'
+    // 汎用セレクタ (最後の手段) - textContentベース検索は後でJavaScriptで実装
+    'button[type="submit"]',
+    'input[type="submit"]'
   ],
   
   inputSelectors: [
@@ -243,9 +241,9 @@ export const CHATWORK_CONFIG: ServiceConfig = {
     
     // メタ情報
     'meta[name="application-name"][content*="Chatwork"]',
-    'title:contains("Chatwork")',
     'body[class*="chatwork"]',
-    'body[data-app*="chatwork"]'
+    'body[data-app*="chatwork"]',
+    'html[data-app*="chatwork"]'
   ],
   
   urlPatterns: [
@@ -372,10 +370,10 @@ export const GOOGLE_CHAT_CONFIG: ServiceConfig = {
     'button[title*="送信"]:not([disabled])',
     'button[title*="Send"]:not([disabled])',
     
-    // アイコンベースのセレクタ
-    'button:has([data-icon="send"])',
-    'button:has(.google-material-icons:contains("send"))',
+    // アイコンベースのセレクタ（安全なセレクタ）
+    'button[data-icon="send"]',
     'button[class*="send"]:not([class*="file"]):not([disabled])',
+    'button[class*="Send"]:not([class*="file"]):not([disabled])',
     
     // Google Chat特有のセレクタ
     'div[role="button"][aria-label*="送信"]',
