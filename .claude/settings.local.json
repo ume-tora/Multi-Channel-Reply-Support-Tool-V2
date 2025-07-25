@@ -28,7 +28,11 @@
       "Bash(rg:*)",
       "Bash(npx tsc:*)",
       "Bash(git commit:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(mv:*)",
+      "Bash(npm test)",
+      "Bash(npx:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": []
   }
